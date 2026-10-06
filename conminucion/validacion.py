@@ -46,7 +46,7 @@ def _results_rows(res: CircuitResult) -> list[list[str]]:
 
 def render_markdown() -> str:
     cfg = reference_case()
-    res = simulate("cerrado_directo", cfg, tol=1e-12)
+    res = simulate("cerrado_directo", cfg, tol=1e-14)
     g, mill = cfg.fresh.grid, cfg.mill
     sel, fr, cl = mill.selection, mill.fracture, cfg.classifier
     feed = cfg.fresh
@@ -126,7 +126,7 @@ def render_markdown() -> str:
         "## 4. Resultados de nuestro simulador",
         "",
         f"Convergencia: {res.solution.iterations} iteraciones de sustitución sucesiva "
-        "(tolerancia relativa 1e-12). Error de balance de sólidos del circuito: "
+        "(tolerancia relativa 1e-14). Error de balance de sólidos del circuito: "
         f"{res.balance['error_solidos']:.2e} t/h.",
         "",
         _table(["Magnitud", "conminucion", "MODSIM"], _results_rows(res)),
@@ -156,7 +156,7 @@ def render_markdown() -> str:
 def main(argv: list[str] | None = None) -> int:
     text = render_markdown()
     DOC_PATH.write_text(text, encoding="utf-8")
-    res = simulate("cerrado_directo", reference_case(), tol=1e-12)
+    res = simulate("cerrado_directo", reference_case(), tol=1e-14)
     s = res.streams
     out = (
         f"P80 producto = {s['overflow'].p80:.2f} um | carga circulante = "
