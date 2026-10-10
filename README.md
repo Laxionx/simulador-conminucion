@@ -75,6 +75,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   neta, sin tiempo de residencia (equivale al modelo HFSU de MODSIM).
 - Potencia del molino de bolas desde sus dimensiones, carga y velocidad (Bond-Rowland),
   validada contra ejemplos resueltos publicados.
+- Desgaste de bolas: carga estacionaria con la ley general d^Δ, balance de recarga y vida de
+  bolas, y las correlaciones de consumo de Bond (1964). Validado con cargas medidas en planta
+  (Davis 1919); ver [docs/desgaste.md](docs/desgaste.md).
 - Clasificador por índice de nitidez d25/d75 (logístico, Rosin-Rammler o suma exponencial),
   con bypass y escalado del d50 por densidad (equivale al modelo CYCA de MODSIM).
 - Solucionador secuencial-modular con corrientes de corte y Wegstein opcional.
@@ -132,9 +135,11 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
-               circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power
+               circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
+               desgaste
 app/           streamlit_app.py
-docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md, img/
+docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
+               desgaste.md, img/
 tests/         pytest (cobertura >= 90 %)
 ```
 
