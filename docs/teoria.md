@@ -124,6 +124,21 @@ la fina. El d50c se da para densidad 2,67 y se escala como ((2,67 − 1)/(ρs �
 Todo esto está disponible como opciones: `size_basis="tamiz_inferior"` y
 `Fracture(parent_size="tamiz_inferior")`.
 
+## 3d. Potencia del molino de bolas (Bond; Rowland y Kjos, 1980)
+
+    kW por t de bolas = 4,879 D^0,3 (3,2 − 3 J) Cs (1 − 0,1 / 2^(9 − 10 Cs)) + Ss
+
+- D es el diámetro interior (m), J la fracción del volumen ocupada por bolas y Cs la fracción
+  de la velocidad crítica.
+- Para D > 3,3 m se suma el factor de tamaño de bola Ss = 1,102 (B − 12,5 D)/50,8, con B en mm.
+- Se multiplica por 1,16 en molinos de parrilla en húmedo y por 1,08 en seco.
+- La masa de bolas es J · (π/4) D² L · 7,8 t/m³ · (1 − 0,4).
+- El resultado es potencia en el piñón y vale para cargas normales.
+
+Es la misma ecuación que dan Austin, Klimpel y Luckie (1984, p. 236) como
+15,6 D^0,3 (1 − 0,937 J), y Gupta y Yan (2016) en forma total. Las pruebas comprueban que las
+tres formas coinciden y reproducen los dos ejemplos resueltos de Gupta y Yan.
+
 ## 4. Hidrociclón de Plitt (1976): NO implementado
 
 Ver el README (fase 2). Las constantes publicadas no coinciden entre fuentes consultadas
@@ -194,3 +209,8 @@ Es una aproximación lineal; cerca de una cota (por ejemplo Rf = 0) puede ser op
 - Bond, F. C. (1952). The third theory of comminution. *Trans. AIME* 193, 484-494.
 - King, R. P. (2001). *Modeling and Simulation of Mineral Processing Systems*.
   Butterworth-Heinemann.
+- Rowland, C. A. y Kjos, D. M. (1980). Rod and ball mills. En Mular y Bhappu (eds.), *Mineral
+  Processing Plant Design*, 2.ª ed., SME-AIME, 239-278.
+- Gupta, A. y Yan, D. S. (2016). *Mineral Processing Design and Operations*, 2.ª ed. Elsevier.
+- Herbst, J. A. y Fuerstenau, D. W. (1980). Scale-up procedure for continuous grinding mill
+  design using population balance models. *Int. J. Mineral Processing* 7, 1-31.

@@ -73,6 +73,8 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Curva de eficiencia de Whiten/Lynch-Rao con bypass de Kelsall (ciclón y harnero).
 - Molino con selección específica de energía de Herbst y Fuerstenau: escala con la potencia
   neta, sin tiempo de residencia (equivale al modelo HFSU de MODSIM).
+- Potencia del molino de bolas desde sus dimensiones, carga y velocidad (Bond-Rowland),
+  validada contra ejemplos resueltos publicados.
 - Clasificador por índice de nitidez d25/d75 (logístico, Rosin-Rammler o suma exponencial),
   con bypass y escalado del d50 por densidad (equivale al modelo CYCA de MODSIM).
 - Solucionador secuencial-modular con corrientes de corte y Wegstein opcional.
@@ -96,9 +98,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   Para lograrlo hubo que usar sus convenciones de tamaño de clase y de fractura, que quedaron
   como opciones.
 - Un solo mineral (una densidad de sólidos), sin liberación ni mineralogía.
-- El molino es de mezcla perfecta. `EnergyBallMill` escala con la potencia neta que da el
-  usuario, pero no la calcula desde las dimensiones del molino: los modelos de potencia de
-  Bond, Morrell y Austin no están implementados.
+- El molino es de mezcla perfecta. La potencia de `EnergyBallMill` se puede calcular desde las
+  dimensiones con Bond-Rowland (`bond_mill_power`). Los modelos de Morrell y Austin no están,
+  porque no hay datos públicos para validarlos.
 - El ciclón usa una curva de eficiencia con d50c fijo: **no** predice d50c a partir de la
   geometría ni de la presión (ver fase 2).
 - Los IC por jacobiano son una aproximación lineal; cerca de cotas (Rf = 0) son optimistas.
@@ -130,7 +132,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
-               circuits, reconcile, fitting, synthetic, validacion, plantas_reales
+               circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power
 app/           streamlit_app.py
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md, img/
 tests/         pytest (cobertura >= 90 %)
