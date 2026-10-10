@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .chancadora import ConeCrusher
 from .classifier import EfficiencyCurve, SharpnessCurve
 from .mill import BallMill, EnergyBallMill
 from .stream import Stream
@@ -17,6 +18,16 @@ class MillOp:
 
     def __call__(self, ins: list[Stream]) -> tuple[Stream, ...]:
         return (self.mill(Stream.mix(ins)),)
+
+
+@dataclass(frozen=True)
+class CrusherOp:
+    """Chancadora: mezcla las entradas y las chanca."""
+
+    crusher: ConeCrusher
+
+    def __call__(self, ins: list[Stream]) -> tuple[Stream, ...]:
+        return (self.crusher(Stream.mix(ins)),)
 
 
 @dataclass(frozen=True)

@@ -78,6 +78,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Desgaste de bolas: carga estacionaria con la ley general d^Δ, balance de recarga y vida de
   bolas, y las correlaciones de consumo de Bond (1964). Validado con cargas medidas en planta
   (Davis 1919); ver [docs/desgaste.md](docs/desgaste.md).
+- Chancadora de cono estándar y de cabeza corta (clasificación interna y fractura de Whiten):
+  reproduce los reportes de MODSIM con un desvío de 0,009 puntos o menos; ver
+  [docs/chancado.md](docs/chancado.md).
 - Clasificador por índice de nitidez d25/d75 (logístico, Rosin-Rammler o suma exponencial),
   con bypass y escalado del d50 por densidad (equivale al modelo CYCA de MODSIM).
 - Solucionador secuencial-modular con corrientes de corte y Wegstein opcional.
@@ -127,7 +130,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   presión; además hay versiones con otras unidades y la corrección de Flintoff 1987). Como no
   hay dos fuentes independientes que coincidan y no se tuvo acceso al artículo original (CIM
   Bulletin 69(776), 114-123), no se inventan constantes.
-- Molino SAG/AG, chancadoras (modelo de Whiten/Andersen-Awachie), flotación.
+- Molino SAG/AG, chancadora primaria y flotación.
 - Bootstrap de residuos como alternativa de IC.
 - Mezcla de varios minerales y densidades distintas.
 
@@ -136,10 +139,10 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
-               desgaste
+               desgaste, chancadora
 app/           streamlit_app.py
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
-               desgaste.md, img/
+               desgaste.md, chancado.md, img/
 tests/         pytest (cobertura >= 90 %)
 ```
 

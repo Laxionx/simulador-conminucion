@@ -8,6 +8,7 @@ y se fijaron antes de correr; el detalle y los veredictos están en
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -539,11 +540,13 @@ def pasante_estilo_modsim(stream: Stream) -> NDArray[np.float64]:
     return 100.0 * stream.cumulative_passing[1:]
 
 
-def tamano_estilo_modsim(stream: Stream, p: float) -> float:
+def tamano_estilo_modsim(
+    stream: Stream, p: float, lista_um: Sequence[float] = BOUGAINVILLE_TAMICES_UM
+) -> float:
     """Px como lo calcula MODSIM: interpolación en coordenadas de Rosin-Rammler
     (ln(-ln(1-P)) vs ln x) sobre sus pares (rótulo, % pasante). El rótulo de la fila i es la
-    media geométrica de los tamaños i e i+1 de su lista."""
-    lista = np.asarray(BOUGAINVILLE_TAMICES_UM)
+    media geométrica de los tamaños i e i+1 de su lista (por defecto, la de Bougainville)."""
+    lista = np.asarray(lista_um)
     rotulo = np.sqrt(lista[:-1] * lista[1:])
     pas = pasante_estilo_modsim(stream) / 100.0
     ok = (pas > 0) & (pas < 1)
