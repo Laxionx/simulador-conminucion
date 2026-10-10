@@ -10,6 +10,7 @@ from .bond import bond_energy
 from .classifier import EfficiencyCurve, SharpnessCurve
 from .flowsheet import Flowsheet, Solution, Unit
 from .mill import BallMill, EnergyBallMill
+from .plitt import PlittCyclone
 from .stream import Stream
 from .units import ClassifierOp, MillOp, SumpOp
 
@@ -21,7 +22,7 @@ FRESH = "alimentacion_fresca"
 class CircuitConfig:
     fresh: Stream
     mill: BallMill | EnergyBallMill
-    classifier: EfficiencyCurve | SharpnessCurve
+    classifier: EfficiencyCurve | SharpnessCurve | PlittCyclone
     cyclone_feed_pct_solids: float = 45.0
     bond_wi: float = 14.0  # kWh/t
 

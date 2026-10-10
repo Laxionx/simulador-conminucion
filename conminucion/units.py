@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .chancadora import ConeCrusher
 from .classifier import EfficiencyCurve, SharpnessCurve
 from .mill import BallMill, EnergyBallMill
+from .plitt import PlittCyclone
 from .stream import Stream
 
 
@@ -34,7 +35,7 @@ class CrusherOp:
 class ClassifierOp:
     """Hidrociclón o harnero: salidas (descarga gruesa, descarga fina)."""
 
-    curve: EfficiencyCurve | SharpnessCurve
+    curve: EfficiencyCurve | SharpnessCurve | PlittCyclone
 
     def __call__(self, ins: list[Stream]) -> tuple[Stream, ...]:
         return self.curve.split(Stream.mix(ins))

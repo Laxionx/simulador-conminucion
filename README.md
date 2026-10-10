@@ -81,6 +81,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Chancadora de cono estándar y de cabeza corta (clasificación interna y fractura de Whiten):
   reproduce los reportes de MODSIM con un desvío de 0,009 puntos o menos; ver
   [docs/chancado.md](docs/chancado.md).
+- Hidrociclón de Plitt (forma de King, modelo CYCL de MODSIM): d50c, nitidez y partición de
+  agua desde la geometría, con aviso de embanque de Mular y Jull. Reproduce los resultados de
+  MODSIM; ver [docs/plitt.md](docs/plitt.md).
 - Clasificador por índice de nitidez d25/d75 (logístico, Rosin-Rammler o suma exponencial),
   con bypass y escalado del d50 por densidad (equivale al modelo CYCA de MODSIM).
 - Solucionador secuencial-modular con corrientes de corte y Wegstein opcional.
@@ -107,8 +110,8 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - El molino es de mezcla perfecta. La potencia de `EnergyBallMill` se puede calcular desde las
   dimensiones con Bond-Rowland (`bond_mill_power`). Los modelos de Morrell y Austin no están,
   porque no hay datos públicos para validarlos.
-- El ciclón usa una curva de eficiencia con d50c fijo: **no** predice d50c a partir de la
-  geometría ni de la presión (ver fase 2).
+- El ciclón de Plitt se comparó contra MODSIM, no contra ciclones medidos. Sin calibrar,
+  Plitt predice mal en planta: sus tres factores se deben ajustar con un muestreo.
 - Los IC por jacobiano son una aproximación lineal; cerca de cotas (Rf = 0) son optimistas.
   La partición derivada de datos reconciliados tiene errores heterocedásticos y su cobertura
   real es menor que la nominal (se observó ~50-80 % en simulaciones de prueba); la
@@ -123,13 +126,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 
 ## Fase 2
 
-- **Hidrociclón de Plitt (1976)** como estimador de d50c, nitidez y partición de agua: **no se
-  implementó**. Las constantes publicadas no coinciden entre las fuentes accesibles por web
-  (p. ej. constante de d50c 50,5 en la documentación de SysCAD frente a 39,7 en otras
-  fuentes; constante de la partición de agua 1,9 frente a 3,29 con distinto término de
-  presión; además hay versiones con otras unidades y la corrección de Flintoff 1987). Como no
-  hay dos fuentes independientes que coincidan y no se tuvo acceso al artículo original (CIM
-  Bulletin 69(776), 114-123), no se inventan constantes.
+- Plitt con la corrección de Flintoff (1987) y el criterio de embanque de Concha. Plitt sí
+  está, en la forma de MODSIM. Las constantes publicadas no coinciden entre las fuentes por web
+  y el artículo original (CIM Bulletin 69(776), 114-123) es de pago.
 - Molino SAG/AG, chancadora primaria y flotación.
 - Bootstrap de residuos como alternativa de IC.
 - Mezcla de varios minerales y densidades distintas.
@@ -139,10 +138,10 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
-               desgaste, chancadora
+               desgaste, chancadora, plitt, modsim
 app/           streamlit_app.py
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
-               desgaste.md, chancado.md, img/
+               desgaste.md, chancado.md, plitt.md, img/
 tests/         pytest (cobertura >= 90 %)
 ```
 
