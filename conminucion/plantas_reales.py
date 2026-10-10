@@ -15,9 +15,14 @@ from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 from .bond import bond_energy
-from .classifier import corrected_efficiency
+from .circuits import CircuitConfig, CircuitResult, simulate
+from .classifier import SharpnessCurve, corrected_efficiency
 from .fitting import FitResult, fit_cyclone_partition
+from .fracture import Fracture
+from .mill import EnergyBallMill, EnergySelection
 from .reconcile import reconcile_node
+from .sizes import SQRT2, SizeGrid
+from .stream import Stream
 
 # --------------------------------------------------------------------------------------
 # C2 · Vazante (Nexa Resources, Brasil): hidrociclones solos, circuito de molienda C.
@@ -326,3 +331,203 @@ def carga_circulante_por_granulometria(clasificador: str) -> tuple[float, float]
     rc = reconcile_node(clases(alim), clases(gruesos), clases(finos))
     simulada = rc.r_underflow * alim.tph / fresca.tph
     return simulada, gruesos.tph / fresca.tph
+
+
+# --------------------------------------------------------------------------------------
+# C1 · Bougainville: ejemplo de MODSIM 3.6.24 Academic (GPL v3), corrido por el usuario el
+# 07-10-2026. Entrada: Bougainville.sid (malla, alimentación) y Bougainville.cur (modelos
+# HFSU y CYCA). Referencia: STREAMPROPS.TXT que escribió MODSIM. Parámetros según el manual
+# de MODSIM v3.6 (pp. 53-55 y 67-68) y la ayuda de HFSU.
+# --------------------------------------------------------------------------------------
+
+BOUGAINVILLE_TAMICES_UM = tuple(20000.0 / SQRT2**k for k in range(25))
+BOUGAINVILLE_ALIMENTACION = (  # fracciones por clase de la corriente 1 (Bougainville.sid)
+    1.5081e-3,
+    1.8537e-2,
+    7.5051e-2,
+    1.4760e-1,
+    1.5248e-1,
+    9.5047e-2,
+    7.9874e-2,
+    5.6921e-2,
+    4.8035e-2,
+    3.6860e-2,
+    3.1975e-2,
+    2.6775e-2,
+    2.5117e-2,
+    2.3780e-2,
+    2.0713e-2,
+    1.7702e-2,
+    1.7178e-2,
+    2.4924e-2,
+    2.9265e-2,
+    2.0694e-2,
+    1.4633e-2,
+    1.0347e-2,
+    7.3164e-3,
+    5.1735e-3,
+    1.2490e-2,
+)
+BOUGAINVILLE_ALIM_TPH = 127.8 * 3.6  # MODSIM guarda kg/s
+# Salida de MODSIM (STREAMPROPS.TXT): % pasante que MODSIM rotula con el tamaño medio de
+# cada clase y que corresponde al límite inferior de la clase (el fondo figura con 0,000).
+MODSIM_PRODUCTO_PASANTE = (
+    100.000,
+    100.000,
+    100.000,
+    100.000,
+    100.000,
+    100.000,
+    100.000,
+    100.000,
+    100.000,
+    99.998,
+    99.921,
+    97.729,
+    89.930,
+    80.028,
+    68.956,
+    57.790,
+    47.363,
+    37.531,
+    28.669,
+    21.902,
+    16.766,
+    12.868,
+    9.900,
+    7.632,
+)
+MODSIM_UNDERFLOW_PASANTE = (
+    99.814,
+    98.332,
+    94.008,
+    87.083,
+    80.080,
+    74.480,
+    69.009,
+    63.544,
+    57.391,
+    50.048,
+    40.510,
+    30.922,
+    27.494,
+    24.428,
+    21.047,
+    17.639,
+    14.456,
+    11.455,
+    8.751,
+    6.685,
+    5.117,
+    3.927,
+    3.022,
+    2.329,
+)
+MODSIM_ALIM_MOLINO_PASANTE = (
+    99.833,
+    98.147,
+    92.075,
+    80.846,
+    69.313,
+    61.568,
+    54.714,
+    49.124,
+    43.712,
+    38.378,
+    32.322,
+    26.529,
+    23.605,
+    20.917,
+    18.256,
+    15.748,
+    13.370,
+    10.649,
+    7.823,
+    5.756,
+    4.246,
+    3.141,
+    2.331,
+    1.735,
+)
+MODSIM_DESCARGA_PASANTE = (
+    99.916,
+    99.249,
+    97.302,
+    94.184,
+    91.030,
+    88.509,
+    86.046,
+    83.585,
+    80.814,
+    77.507,
+    73.170,
+    67.648,
+    61.817,
+    54.992,
+    47.384,
+    39.711,
+    32.546,
+    25.790,
+    19.700,
+    15.050,
+    11.521,
+    8.842,
+    6.803,
+    5.244,
+)
+MODSIM_BOUGAINVILLE = {
+    "underflow_tph": 376.92,
+    "producto_tph": 460.44,
+    "alim_molino_tph": 837.36,
+    "agua_cajon_m3h": 222.05,
+    "agua_molino_m3h": 123.05,
+    "overflow_pct_solidos": 57.16,
+    "underflow_pct_solidos": 81.37,
+    "p80_um": 185.0,  # MODSIM imprime 3 cifras truncadas: 0.185E-03 m
+    "p50_um": 71.9,
+    "p20_um": 20.6,
+}
+
+
+def bougainville_config(convencion_modsim: bool = True) -> CircuitConfig:
+    """Lectura literal del archivo de MODSIM. Con `convencion_modsim`, el ciclón y la selección
+    se evalúan en el tamiz superior de cada clase y el ciclón no corrige por densidad: así lo
+    hace MODSIM según su propia partición (ajuste: d50 = 400,08 µm, lambda = 9,839)."""
+    grid = SizeGrid(np.asarray(BOUGAINVILLE_TAMICES_UM))
+    fresh = Stream.from_fractions(grid, BOUGAINVILLE_ALIMENTACION, BOUGAINVILLE_ALIM_TPH)
+    basis = "tamiz_superior" if convencion_modsim else "medio"
+    mill = EnergyBallMill(
+        EnergySelection(s1e=0.62, zeta1=0.551, zeta2=-0.331, size_basis=basis),
+        Fracture(phi=0.79, gamma=0.696, beta=2.17),
+        power_kw=5000.0,
+        region_fractions=(1.0,),  # regiones 1 y 2 con fracción 0 en el .cur
+        discharge_pct_solids=80.0,
+    )
+    cyclone = SharpnessCurve(
+        d50c=400.0,
+        sharpness=0.8,
+        bypass=0.2,
+        model="logistico",
+        density_exponent=0.0 if convencion_modsim else 0.5,
+        size_basis=basis,
+    )
+    return CircuitConfig(fresh, mill, cyclone, cyclone_feed_pct_solids=66.0)
+
+
+def pasante_estilo_modsim(stream: Stream) -> NDArray[np.float64]:
+    """% que pasa el límite inferior de cada clase (lo que MODSIM rotula con el tamaño medio)."""
+    return 100.0 * stream.cumulative_passing[1:]
+
+
+def tamano_estilo_modsim(stream: Stream, p: float) -> float:
+    """Px como lo calcula MODSIM: interpolación en coordenadas de Rosin-Rammler
+    (ln(-ln(1-P)) vs ln x) sobre los pares (tamaño medio, % pasante estilo MODSIM)."""
+    medio = stream.grid.sizes[:-1]
+    pas = pasante_estilo_modsim(stream) / 100.0
+    ok = (pas > 0) & (pas < 1)
+    x, y = np.log(medio[ok])[::-1], np.log(-np.log(1.0 - pas[ok]))[::-1]
+    return float(np.exp(np.interp(np.log(-np.log(1.0 - p)), y, x)))
+
+
+def simular_bougainville(convencion_modsim: bool = True) -> CircuitResult:
+    return simulate("cerrado_directo", bougainville_config(convencion_modsim), tol=1e-10)

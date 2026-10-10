@@ -89,3 +89,65 @@ class BallMill:
     def __call__(self, feed: Stream) -> Stream:
         p = self.discharge_solids(feed.grid, feed.solids)
         return Stream(feed.grid, p, feed.water + self.added_water, feed.rho_s)
+
+
+@dataclass(frozen=True)
+class EnergySelection:
+    """Selección específica de energía de Herbst y Fuerstenau (1980), en t/kWh:
+    ln(S^E / S^E_1) = zeta1 ln d + zeta2 (ln d)^2, con d en mm (tamaño medio de la clase)."""
+
+    s1e: float  # S^E a 1 mm, t/kWh
+    zeta1: float = 0.0
+    zeta2: float = 0.0
+    size_basis: str = "medio"  # o "tamiz_superior", como MODSIM
+
+    def __post_init__(self) -> None:
+        if self.s1e <= 0:
+            raise ValueError("s1e debe ser positivo")
+
+    def specific(self, grid: SizeGrid) -> NDArray[np.float64]:
+        ln_d = np.log(grid.representative(self.size_basis) / 1000.0)
+        se = self.s1e * np.exp(self.zeta1 * ln_d + self.zeta2 * ln_d**2)
+        se[-1] = 0.0  # el fondo no fractura
+        return se
+
+
+@dataclass(frozen=True)
+class EnergyBallMill:
+    """Molino de bolas con escalamiento por potencia (modelo HFSU de MODSIM; King 2001, 5.9).
+
+    En cada región de mezcla perfecta, (r/d)_i = S^E_i * P / W * fracción de tiempo, con P la
+    potencia neta (kW) y W los sólidos que entran (t/h): no hace falta el tiempo de residencia.
+    """
+
+    selection: EnergySelection
+    fracture: Fracture = field(default_factory=Fracture)
+    power_kw: float = 1000.0
+    region_fractions: tuple[float, ...] = (1.0,)
+    discharge_pct_solids: float | None = None  # agua que se agrega para fijar la descarga
+
+    def __post_init__(self) -> None:
+        fr = self.region_fractions
+        if self.power_kw <= 0 or not fr or min(fr) < 0 or abs(sum(fr) - 1.0) > 1e-9:
+            raise ValueError("power_kw>0 y fracciones de región >=0 que sumen 1")
+        if self.discharge_pct_solids is not None and not 0 < self.discharge_pct_solids < 100:
+            raise ValueError("discharge_pct_solids debe estar en (0, 100)")
+
+    def discharge_solids(self, grid: SizeGrid, feed: NDArray) -> NDArray[np.float64]:
+        p = np.asarray(feed, dtype=float)
+        if p.sum() <= 0:
+            return p
+        specific_energy = self.power_kw / p.sum()  # kWh/t
+        se, a = self.selection.specific(grid), self.fracture.appearance(grid)
+        for fraction in self.region_fractions:
+            if fraction > 0:
+                p = solve_mixer(p, se * specific_energy * fraction, a)
+        return p
+
+    def __call__(self, feed: Stream) -> Stream:
+        p = self.discharge_solids(feed.grid, feed.solids)
+        water = feed.water
+        if self.discharge_pct_solids is not None:
+            x = self.discharge_pct_solids
+            water = max(water, p.sum() * (100.0 - x) / x)
+        return Stream(feed.grid, p, water, feed.rho_s)

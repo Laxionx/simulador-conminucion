@@ -10,7 +10,7 @@ Aquí se pregunta si el simulador reproduce los números que publicaron plantas 
 
 | Caso | Planta | Qué se prueba | Veredicto |
 |---|---|---|---|
-| C1 | Bougainville (ejemplo de MODSIM) | Circuito completo contra la salida de MODSIM | **No corrido**: faltan 2 modelos (ver C1) |
+| C1 | Bougainville (ejemplo de MODSIM 3.6.24) | Circuito completo contra la salida de MODSIM | **Pasa 6 de 7** métricas; el P20 queda en −5,2 % |
 | C2 | Vazante, Nexa (Brasil) | Curva de partición del ciclón: d50c, alpha y agua a gruesos | **Pasa** en las 2 campañas |
 | C3 | Madneuli (Georgia) | Balance del circuito y carga circulante | **Pasa** en 3 de 3 clasificadores |
 | C4 | Constancia, Hudbay (Perú) | Energía de Bond en 14 muestreos de molinos de bolas | **Pasa** en 14 de 14 |
@@ -122,11 +122,55 @@ El simulador da siempre un poco más que el reporte. Es un sesgo constante, no r
 
 Con supérgeno, la planta gasta en promedio 40 % más energía que la que predice Bond. Si se diseña con `bond_energy` para ese mineral, hay que multiplicar el Wi por un factor operativo.
 
-## C1 · Bougainville (MODSIM): no corrido
+## C1 · Bougainville: comparación con MODSIM 3.6.24
 
-El ejemplo de MODSIM simula el molino de bolas con un modelo que escala la ruptura con la energía del motor (`HFSU`, de Herbst y Fuerstenau) y el ciclón con su propio modelo (`CYCA`). Este simulador no tiene ninguno de los dos: su molino usa la selección de Austin o por nudos con tiempo de residencia, y su ciclón la curva de Whiten. Reproducir la salida de MODSIM (P80 de 185 µm y carga circulante de 82 %) exigiría implementar esos modelos. El brief excluía cambiar modelos salvo por un bug, así que el caso se descarta con nota y queda para una fase siguiente.
+**Fuente:** el ejemplo `Bougainville.JOB` de MODSIM 3.6.24 Academic, con licencia GPL v3, corrido por el usuario el 07-10-2026.
+- MODSIM escribió todas las corrientes en `STREAMPROPS.TXT`: caudales, agua y granulometrías.
+- Los parámetros de entrada salen de `Bougainville.sid` (malla y alimentación) y `Bougainville.cur` (modelos).
+- Su significado está en el manual de MODSIM v3.6 (pp. 53-55 y 67-68) y en la ayuda de HFSU.
 
-**Observación, sin veredicto:** el archivo del ejemplo (`Bougainville.siz`) trae granulometrías de la descarga del molino, el underflow y el overflow.
-- Reconciliadas, dan una carga circulante de **3,7**, con χ² = 86. Es una cifra poco coherente: la fracción al underflow varía entre 0,70 y 0,86 según el tamiz.
-- MODSIM, con los parámetros del ejemplo, da **0,82**.
-- No consta si esas granulometrías son un muestreo real, así que no se usan como referencia.
+**Lo que hubo que implementar.** Los dos modelos del ejemplo se programaron desde sus ecuaciones publicadas, sin usar código de MODSIM (ver `docs/teoria.md`, secciones 3b y 3c):
+- **Molino `HFSU`:** selección específica de energía de Herbst y Fuerstenau con 5.000 kW netos y fractura de Austin (β = 2,17, γ = 0,696, Φ = 0,79). Es una sola región de mezcla perfecta, porque las regiones 1 y 2 tienen fracción 0.
+- **Ciclón `CYCA`:** curva logística con d50c = 400 µm, nitidez d25/d75 = 0,8 y bypass 0,2.
+
+**Cómo informa MODSIM**, deducido de su propia salida:
+- Rotula cada % pasante con el tamaño medio de la clase, pero el valor es el % que pasa por el límite inferior. El fondo figura con 0,000 y la alimentación cuadra con las fracciones del `.sid`.
+- Calcula P80, P50 y P20 interpolando en coordenadas de Rosin-Rammler. Así se reproducen sus 6,48 mm de la alimentación y sus 71,9 µm del producto.
+- El simulador informa igual para comparar (`pasante_estilo_modsim`, `tamano_estilo_modsim`).
+
+**Tolerancias**, declaradas antes de correr:
+- carga circulante y alimentación al molino: ±5 %;
+- P80, P50 y P20 del producto: ±5 %;
+- cada punto de la granulometría del producto: ±3 puntos;
+- agua del cajón y % de sólidos del rebose: ±2 %.
+
+**Primer intento, con la lectura literal: falla.** Carga circulante 0,733 contra 0,819 (−10,5 %) y P80 209 contra 185 µm (+13 %).
+
+**Diagnóstico por equipo.** Cada equipo se alimentó con la corriente exacta que calculó MODSIM:
+- **Ciclón:** la partición implícita de MODSIM tiene la misma nitidez, pero corta más fino. Ajustada, da d50 = **400,08 µm** y λ = 9,839, frente a 400 y 9,847 de sus parámetros, si la curva se evalúa en el **tamiz superior** de cada clase. Evaluada en el tamaño medio daría 336,4 µm, que es 400 × 2^(−1/4). Además, MODSIM no aplicó el escalado por densidad: con él, el d50 sería 396,5 µm. Con esa convención, nuestro ciclón reproduce a MODSIM **exacto**: underflow de 377,05 contra 376,92 t/h y curva del rebose a 0,002 puntos.
+- **Molino:** queda cerca, pero no exacto. Con la selección en el tamiz superior, la diferencia máxima es de 1,09 puntos; en el tamaño medio, de 1,40. Se probaron también otra discretización de la fractura y las 3 regiones del modelo GMIL. La mejor variante queda a 0,60 puntos y ninguna reproduce a MODSIM. Una sola región de mezcla perfecta sí se confirma: con 3 regiones el error sube a ~4,5 puntos. Ahí se paró la búsqueda, porque seguir probando variantes hasta que algo pase sería ajustar el modelo a la respuesta.
+
+**Resultado con la convención de MODSIM** (ciclón y selección en el tamiz superior, sin escalado por densidad):
+
+| Métrica | Simulador | MODSIM | Desvío | Veredicto |
+|---|---|---|---|---|
+| Carga circulante | 0,790 | 0,819 | −3,5 % | ✅ |
+| Alimentación al molino (t/h) | 823,6 | 837,4 | −1,6 % | ✅ |
+| P80 del producto (µm) | 179,6 | 185 | −2,9 % | ✅ |
+| P50 del producto (µm) | 68,5 | 71,9 | −4,7 % | ✅ |
+| P20 del producto (µm) | 19,5 | 20,6 | **−5,2 %** | ❌ |
+| Granulometría del producto, 24 puntos | máx. 1,41 pt | | | ✅ |
+| Agua del cajón (m³/h) y % de sólidos del rebose | 218,4 y 57,54 % | 222,05 y 57,16 % | −1,6 % y +0,7 % | ✅ |
+
+**El P20 queda fuera por 0,2 puntos y no se ajustó nada para que pase.** En la suite figura como fallo esperado y estricto.
+
+El residuo viene del molino, y su efecto se ve al cambiar dónde se evalúa la selección:
+
+| Selección evaluada en | Carga circulante | P80 |
+|---|---|---|
+| Tamiz superior (la elegida) | 0,790 | 179,6 µm |
+| Tamaño medio | 0,8195, casi igual a la de MODSIM | 195,6 µm (+5,7 %) |
+
+MODSIM queda entre las dos. Para cerrar la diferencia habría que ver cómo discretiza su molino. El código de MODSIM es GPL v3 y es público, pero no se consultó.
+
+**Mutaciones detectadas:** λ del logístico −5 %, energía específica −5 % y signo de ζ2 invertido. Las tres hacen fallar las pruebas.

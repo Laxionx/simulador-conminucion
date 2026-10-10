@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .classifier import EfficiencyCurve
-from .mill import BallMill
+from .classifier import EfficiencyCurve, SharpnessCurve
+from .mill import BallMill, EnergyBallMill
 from .stream import Stream
 
 
@@ -13,7 +13,7 @@ from .stream import Stream
 class MillOp:
     """Molino: mezcla las entradas y las muele."""
 
-    mill: BallMill
+    mill: BallMill | EnergyBallMill
 
     def __call__(self, ins: list[Stream]) -> tuple[Stream, ...]:
         return (self.mill(Stream.mix(ins)),)
@@ -23,7 +23,7 @@ class MillOp:
 class ClassifierOp:
     """Hidrociclón o harnero: salidas (descarga gruesa, descarga fina)."""
 
-    curve: EfficiencyCurve
+    curve: EfficiencyCurve | SharpnessCurve
 
     def __call__(self, ins: list[Stream]) -> tuple[Stream, ...]:
         return self.curve.split(Stream.mix(ins))

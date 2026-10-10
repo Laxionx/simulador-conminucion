@@ -71,6 +71,10 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Fractura de Austin-Klimpel-Luckie normalizada (columnas suman 1, demostrado en teoría).
 - Molino de mezcla perfecta con (r/d) por nudos o función de selección de Austin, N mezcladores.
 - Curva de eficiencia de Whiten/Lynch-Rao con bypass de Kelsall (ciclón y harnero).
+- Molino con selección específica de energía de Herbst y Fuerstenau: escala con la potencia
+  neta, sin tiempo de residencia (equivale al modelo HFSU de MODSIM).
+- Clasificador por índice de nitidez d25/d75 (logístico, Rosin-Rammler o suma exponencial),
+  con bypass y escalado del d50 por densidad (equivale al modelo CYCA de MODSIM).
 - Solucionador secuencial-modular con corrientes de corte y Wegstein opcional.
 - Reconciliación de nodo por mínimos cuadrados ponderados con restricciones.
 - Ajuste de d50c, α y Rf (ciclón) y de r/d por nudos (molino), IC por covarianza del jacobiano.
@@ -83,11 +87,16 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   razonables pero no están calibrados con datos reales de una planta.
 - **Validado contra 3 plantas reales publicadas:** ciclones de Vazante, balance de Madneuli
   y energía de Bond de Constancia. Las tolerancias se fijaron antes de correr. Detalle y
-  hallazgos en [docs/VALIDACION_PLANTAS_REALES.md](docs/VALIDACION_PLANTAS_REALES.md). El
-  ejemplo Bougainville de MODSIM no se puede reproducir porque usa modelos de molino y de
-  ciclón que este simulador no tiene.
+  hallazgos en [docs/VALIDACION_PLANTAS_REALES.md](docs/VALIDACION_PLANTAS_REALES.md).
+- **Comparado con MODSIM 3.6.24** en su ejemplo Bougainville:
+  - el ciclón coincide exacto;
+  - el circuito queda dentro de ±5 % en carga circulante, P80 y P50;
+  - el P20 queda en −5,2 %, porque la discretización interna del molino de MODSIM no se pudo
+    identificar.
 - Un solo mineral (una densidad de sólidos), sin liberación ni mineralogía.
-- El molino es de mezcla perfecta; no modela carga de bolas, potencia ni escalamiento.
+- El molino es de mezcla perfecta. `EnergyBallMill` escala con la potencia neta que da el
+  usuario, pero no la calcula desde las dimensiones del molino: los modelos de potencia de
+  Bond, Morrell y Austin no están implementados.
 - El ciclón usa una curva de eficiencia con d50c fijo: **no** predice d50c a partir de la
   geometría ni de la presión (ver fase 2).
 - Los IC por jacobiano son una aproximación lineal; cerca de cotas (Rf = 0) son optimistas.
@@ -95,8 +104,8 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   real es menor que la nominal (se observó ~50-80 % en simulaciones de prueba); la
   recuperación dentro de IC está garantizada y probada para la curva de partición medida y
   para los nudos del molino.
-- El caso de validación contra MODSIM 3.6 queda **pendiente de que el usuario cargue los
-  datos** y complete la columna «MODSIM»; no se han comparado números todavía.
+- El caso sintético de `docs/caso-validacion-modsim.md` sigue **pendiente de que el usuario
+  cargue los datos** en MODSIM. El ejemplo Bougainville, en cambio, sí se comparó.
 - La energía de Bond usa Wi constante, sin factores de corrección de eficiencia. En
   Constancia, con mineral supérgeno, la planta gastó en promedio 40 % más que Bond.
 - Las páginas exactas de algunas referencias (Kelsall, Bond, Lynch-Rao) no fueron

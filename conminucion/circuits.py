@@ -7,9 +7,9 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .bond import bond_energy
-from .classifier import EfficiencyCurve
+from .classifier import EfficiencyCurve, SharpnessCurve
 from .flowsheet import Flowsheet, Solution, Unit
-from .mill import BallMill
+from .mill import BallMill, EnergyBallMill
 from .stream import Stream
 from .units import ClassifierOp, MillOp, SumpOp
 
@@ -20,8 +20,8 @@ FRESH = "alimentacion_fresca"
 @dataclass(frozen=True)
 class CircuitConfig:
     fresh: Stream
-    mill: BallMill
-    classifier: EfficiencyCurve
+    mill: BallMill | EnergyBallMill
+    classifier: EfficiencyCurve | SharpnessCurve
     cyclone_feed_pct_solids: float = 45.0
     bond_wi: float = 14.0  # kWh/t
 

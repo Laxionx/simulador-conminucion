@@ -83,6 +83,41 @@ Rf y 1 − Rf. Se usa el mismo modelo para el **hidrociclón** (gruesa = underfl
 0,1-0,4) y para el **harnero** (gruesa = sobretamaño, Rf ≈ 0). Casos límite: d50c → ∞ envía
 todo al overflow salvo el bypass Rf; Rf = 1 envía todo al underflow.
 
+## 3b. Molino con selección específica de energía (Herbst y Fuerstenau, 1980)
+
+Modelo HFSU de MODSIM (King, 2001, sección 5.9). La función de selección por unidad de energía
+(t/kWh) depende del tamaño d (mm):
+
+    ln(S^E / S^E_1) = ζ1 ln d + ζ2 (ln d)²
+
+Como S_i = S^E_i · P / H y τ = H / W (H, carga de sólidos; W, sólidos que entran, t/h):
+
+    (r/d)_i = S_i τ = S^E_i · P / W
+
+No hace falta el tiempo de residencia, solo la potencia neta P (kW). Con varias regiones de
+mezcla perfecta en serie, cada una recibe la fracción de tiempo que le toca. La fractura es la
+de la sección 1.
+
+## 3c. Clasificador por índice de nitidez (Austin, Klimpel y Luckie, 1984, p. 305)
+
+Modelo CYCA de MODSIM. La curva corregida c(x), con x = d / d50c, se fija con el índice de
+nitidez SI = d25/d75 (0 < SI < 1):
+
+| Forma | Ecuación | Parámetro desde SI |
+|---|---|---|
+| Logística | c = 1 / (1 + x^(−λ)) | λ = 2 ln 3 / (−ln SI) |
+| Rosin-Rammler | c = 1 − exp(−ln 2 · x^m) | m = ln(ln(4/3) / ln 4) / ln SI |
+| Suma exponencial (Whiten) | sección 3 | α tal que x25/x75 = SI, con x_p = ln((1 + p(e^α − 2))/(1 − p))/α |
+
+Partición real: E = B + (1 − B) c, con B el bypass. El agua se reparte B a la gruesa y 1 − B a
+la fina. El d50c se da para densidad 2,67 y se escala como ((2,67 − 1)/(ρs − 1))^n, con n entre
+0,5 (Stokes) y 1 (Newton).
+
+**Convención de MODSIM:** evalúa el clasificador en el tamiz superior de cada clase, no en su
+tamaño medio, y en el ejemplo Bougainville no aplicó el escalado por densidad. Ambas cosas se
+identificaron con su propia salida (ver `VALIDACION_PLANTAS_REALES.md`, caso C1). Las dos son
+opciones (`size_basis`, `density_exponent`).
+
 ## 4. Hidrociclón de Plitt (1976): NO implementado
 
 Ver el README (fase 2). Las constantes publicadas no coinciden entre fuentes consultadas
