@@ -88,11 +88,13 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - **Validado contra 3 plantas reales publicadas:** ciclones de Vazante, balance de Madneuli
   y energía de Bond de Constancia. Las tolerancias se fijaron antes de correr. Detalle y
   hallazgos en [docs/VALIDACION_PLANTAS_REALES.md](docs/VALIDACION_PLANTAS_REALES.md).
-- **Comparado con MODSIM 3.6.24** en su ejemplo Bougainville:
-  - el ciclón coincide exacto;
-  - el circuito queda dentro de ±5 % en carga circulante, P80 y P50;
-  - el P20 queda en −5,2 %, porque la discretización interna del molino de MODSIM no se pudo
-    identificar.
+- **Reproduce el ejemplo Bougainville de MODSIM 3.6.24** dentro de la tolerancia de
+  convergencia de MODSIM:
+  - carga circulante a −0,06 %;
+  - las 4 granulometrías a 0,025 puntos o menos.
+
+  Para lograrlo hubo que usar sus convenciones de tamaño de clase y de fractura, que quedaron
+  como opciones.
 - Un solo mineral (una densidad de sólidos), sin liberación ni mineralogía.
 - El molino es de mezcla perfecta. `EnergyBallMill` escala con la potencia neta que da el
   usuario, pero no la calcula desde las dimensiones del molino: los modelos de potencia de

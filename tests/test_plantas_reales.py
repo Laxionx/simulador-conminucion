@@ -129,16 +129,7 @@ def test_bougainville_carga_circulante_y_alimentacion(bougainville):
     assert s["alim_molino"].total_solids == pytest.approx(ref["alim_molino_tph"], rel=0.05)
 
 
-# Hallazgo: el P20 queda en -5,2 % (fuera del ±5 %). El residuo viene del molino, cuya
-# discretización exacta en MODSIM no se pudo identificar (ver docs/VALIDACION_PLANTAS_REALES.md).
-@pytest.mark.parametrize(
-    ("p", "key"),
-    [
-        (0.8, "p80_um"),
-        (0.5, "p50_um"),
-        pytest.param(0.2, "p20_um", marks=pytest.mark.xfail(strict=True, reason="molino")),
-    ],
-)
+@pytest.mark.parametrize(("p", "key"), [(0.8, "p80_um"), (0.5, "p50_um"), (0.2, "p20_um")])
 def test_bougainville_tamanos_del_producto(bougainville, p, key):
     prod = bougainville.streams["overflow"]
     assert tamano_estilo_modsim(prod, p) == pytest.approx(MODSIM_BOUGAINVILLE[key], rel=0.05)
@@ -178,7 +169,7 @@ def test_bougainville_ciclon_solo_reproduce_modsim():
     np.testing.assert_allclose(pasante_estilo_modsim(coarse), MODSIM_UNDERFLOW_PASANTE, atol=0.05)
 
 
-def test_bougainville_molino_solo_cerca_de_modsim():
+def test_bougainville_molino_solo_reproduce_modsim():
     cfg = bougainville_config()
     feed = Stream(
         cfg.fresh.grid,
@@ -186,5 +177,31 @@ def test_bougainville_molino_solo_cerca_de_modsim():
         86.33,
     )
     out = cfg.mill(feed)
-    np.testing.assert_allclose(pasante_estilo_modsim(out), MODSIM_DESCARGA_PASANTE, atol=1.2)
+    np.testing.assert_allclose(pasante_estilo_modsim(out), MODSIM_DESCARGA_PASANTE, atol=0.05)
     assert out.water == pytest.approx(209.34, rel=1e-3)
+
+
+# Guarda de regresión, escrita tras ver el resultado: con la convención del código de MODSIM
+# todas las corrientes coinciden dentro de su tolerancia de convergencia (TOLM = 1e-3).
+def test_bougainville_reproduce_modsim_dentro_de_su_convergencia(bougainville):
+    s = bougainville.streams
+    ref = MODSIM_BOUGAINVILLE
+    assert s["underflow"].total_solids == pytest.approx(ref["underflow_tph"], rel=2e-3)
+    assert s["alim_molino"].total_solids == pytest.approx(ref["alim_molino_tph"], rel=2e-3)
+    for name, modsim in (
+        ("overflow", MODSIM_PRODUCTO_PASANTE),
+        ("underflow", MODSIM_UNDERFLOW_PASANTE),
+        ("descarga_molino", MODSIM_DESCARGA_PASANTE),
+        ("alim_molino", MODSIM_ALIM_MOLINO_PASANTE),
+    ):
+        np.testing.assert_allclose(pasante_estilo_modsim(s[name]), modsim, atol=0.05)
+    agua_molino = s["descarga_molino"].water - s["alim_molino"].water
+    assert agua_molino == pytest.approx(ref["agua_molino_m3h"], rel=2e-3)
+    assert s["underflow"].pct_solids == pytest.approx(ref["underflow_pct_solidos"], abs=0.02)
+
+
+def test_bougainville_lectura_literal_no_reproduce_modsim():
+    literal = simular_bougainville("literal")
+    assert literal.circulating_load < 0.95 * MODSIM_BOUGAINVILLE["underflow_tph"] / 460.08
+    with pytest.raises(ValueError):
+        simular_bougainville("otra")

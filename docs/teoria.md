@@ -113,10 +113,16 @@ Partición real: E = B + (1 − B) c, con B el bypass. El agua se reparte B a la
 la fina. El d50c se da para densidad 2,67 y se escala como ((2,67 − 1)/(ρs − 1))^n, con n entre
 0,5 (Stokes) y 1 (Newton).
 
-**Convención de MODSIM:** evalúa el clasificador en el tamiz superior de cada clase, no en su
-tamaño medio, y en el ejemplo Bougainville no aplicó el escalado por densidad. Ambas cosas se
-identificaron con su propia salida (ver `VALIDACION_PLANTAS_REALES.md`, caso C1). Las dos son
-opciones (`size_basis`, `density_exponent`).
+**Convención de MODSIM**, confirmada en su código fuente y en su salida (caso C1 de
+`VALIDACION_PLANTAS_REALES.md`):
+- cada tamaño de su lista es el límite **inferior** de la clase;
+- ahí evalúa la selección y el clasificador;
+- la fractura toma como tamaño de la partícula madre ese límite inferior, y todos los
+  fragmentos caen en clases más finas;
+- el d50 se escala respecto de la densidad del primer mineral, no de 2,67.
+
+Todo esto está disponible como opciones: `size_basis="tamiz_inferior"` y
+`Fracture(parent_size="tamiz_inferior")`.
 
 ## 4. Hidrociclón de Plitt (1976): NO implementado
 

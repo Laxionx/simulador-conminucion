@@ -36,13 +36,18 @@ class SizeGrid:
         return len(self.sieves)
 
     def representative(self, basis: str = "medio") -> NDArray[np.float64]:
-        """Tamaño de cada clase: "medio" (media geométrica) o "tamiz_superior" (convención de
-        MODSIM para clasificadores y selección; el fondo usa s_n)."""
+        """Tamaño de cada clase: "medio" (media geométrica), "tamiz_superior" o "tamiz_inferior"
+        (MODSIM evalúa selección y clasificación en el límite inferior; el fondo usa s_n/√2)."""
         if basis == "medio":
             return self.sizes
         if basis == "tamiz_superior":
             return self.sieves
-        raise ValueError(f"Base de tamaño desconocida {basis!r}; use 'medio' o 'tamiz_superior'")
+        if basis == "tamiz_inferior":
+            return np.append(self.sieves[1:], self.sieves[-1] / SQRT2)
+        raise ValueError(
+            f"Base de tamaño desconocida {basis!r}; "
+            "use 'medio', 'tamiz_superior' o 'tamiz_inferior'"
+        )
 
     @property
     def sizes(self) -> NDArray[np.float64]:

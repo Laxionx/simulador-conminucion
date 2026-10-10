@@ -113,3 +113,23 @@ def test_alpha_de_whiten_desde_nitidez_y_base_de_tamano_invalida(grid):
     assert whiten_alpha_from_sharpness(0.8) > whiten_alpha_from_sharpness(0.5)
     with pytest.raises(ValueError):
         grid.representative("otro")
+
+
+def test_fractura_con_madre_en_el_limite_inferior(grid):
+    fr = Fracture(phi=0.79, gamma=0.696, beta=2.17, parent_size="tamiz_inferior")
+    a = fr.appearance(grid)
+    n = grid.n
+    np.testing.assert_allclose(a[:, : n - 1].sum(axis=0), 1.0, atol=1e-14)
+    assert np.all(np.triu(a) == 0) and np.all(a >= 0) and a[:, n - 1].sum() == 0
+    s = grid.sieves
+    # primera clase hija: todo lo que queda entre el límite inferior de la madre y el siguiente
+    assert a[1, 0] == pytest.approx(1.0 - fr.cumulative(s[2] / s[1]))
+    assert a[n - 1, 0] == pytest.approx(fr.cumulative(s[n - 1] / s[1]))
+    with pytest.raises(ValueError):
+        Fracture(parent_size="medio")
+
+
+def test_tamano_representativo_en_el_limite_inferior(grid):
+    low = grid.representative("tamiz_inferior")
+    np.testing.assert_allclose(low[:-1], grid.sieves[1:])
+    assert low[-1] == pytest.approx(grid.sieves[-1] / np.sqrt(2.0))

@@ -489,16 +489,35 @@ MODSIM_BOUGAINVILLE = {
 }
 
 
-def bougainville_config(convencion_modsim: bool = True) -> CircuitConfig:
-    """Lectura literal del archivo de MODSIM. Con `convencion_modsim`, el ciclón y la selección
-    se evalúan en el tamiz superior de cada clase y el ciclón no corrige por densidad: así lo
-    hace MODSIM según su propia partición (ajuste: d50 = 400,08 µm, lambda = 9,839)."""
-    grid = SizeGrid(np.asarray(BOUGAINVILLE_TAMICES_UM))
+CONVENCIONES = ("modsim", "literal")
+
+
+def bougainville_config(convencion: str = "modsim") -> CircuitConfig:
+    """Circuito Bougainville con los parámetros del .cur.
+
+    - "modsim": como lo hace el código fuente de MODSIM (MILLMODS.FOR, CLASMODS.FOR). Cada
+      tamaño de su lista es el límite INFERIOR de la clase (la clase 1 queda sobre 20 mm); ahí
+      se evalúan la selección y el ciclón, y de ahí se rompe la partícula madre. El ciclón
+      corrige por densidad respecto del primer mineral (2,7), así que no corrige.
+    - "literal": la lista son los tamices superiores, todo se evalúa en el tamaño medio, la
+      fractura es la del simulador y el ciclón corrige respecto de 2,67 como dice el manual.
+    """
+    if convencion not in CONVENCIONES:
+        raise ValueError(f"Convención desconocida {convencion!r}; use una de {CONVENCIONES}")
+    modsim = convencion == "modsim"
+    top = BOUGAINVILLE_TAMICES_UM[0] * SQRT2 if modsim else None
+    sieves = ((top,) + BOUGAINVILLE_TAMICES_UM[:-1]) if modsim else BOUGAINVILLE_TAMICES_UM
+    grid = SizeGrid(np.asarray(sieves))
     fresh = Stream.from_fractions(grid, BOUGAINVILLE_ALIMENTACION, BOUGAINVILLE_ALIM_TPH)
-    basis = "tamiz_superior" if convencion_modsim else "medio"
+    basis = "tamiz_inferior" if modsim else "medio"
     mill = EnergyBallMill(
         EnergySelection(s1e=0.62, zeta1=0.551, zeta2=-0.331, size_basis=basis),
-        Fracture(phi=0.79, gamma=0.696, beta=2.17),
+        Fracture(
+            phi=0.79,
+            gamma=0.696,
+            beta=2.17,
+            parent_size="tamiz_inferior" if modsim else "tamiz_superior",
+        ),
         power_kw=5000.0,
         region_fractions=(1.0,),  # regiones 1 y 2 con fracción 0 en el .cur
         discharge_pct_solids=80.0,
@@ -508,26 +527,29 @@ def bougainville_config(convencion_modsim: bool = True) -> CircuitConfig:
         sharpness=0.8,
         bypass=0.2,
         model="logistico",
-        density_exponent=0.0 if convencion_modsim else 0.5,
+        density_exponent=0.5,
+        rho_ref=2.7 if modsim else 2.67,
         size_basis=basis,
     )
     return CircuitConfig(fresh, mill, cyclone, cyclone_feed_pct_solids=66.0)
 
 
 def pasante_estilo_modsim(stream: Stream) -> NDArray[np.float64]:
-    """% que pasa el límite inferior de cada clase (lo que MODSIM rotula con el tamaño medio)."""
+    """Los 24 % pasantes que imprime MODSIM: masa de las clases más finas que cada clase."""
     return 100.0 * stream.cumulative_passing[1:]
 
 
 def tamano_estilo_modsim(stream: Stream, p: float) -> float:
     """Px como lo calcula MODSIM: interpolación en coordenadas de Rosin-Rammler
-    (ln(-ln(1-P)) vs ln x) sobre los pares (tamaño medio, % pasante estilo MODSIM)."""
-    medio = stream.grid.sizes[:-1]
+    (ln(-ln(1-P)) vs ln x) sobre sus pares (rótulo, % pasante). El rótulo de la fila i es la
+    media geométrica de los tamaños i e i+1 de su lista."""
+    lista = np.asarray(BOUGAINVILLE_TAMICES_UM)
+    rotulo = np.sqrt(lista[:-1] * lista[1:])
     pas = pasante_estilo_modsim(stream) / 100.0
     ok = (pas > 0) & (pas < 1)
-    x, y = np.log(medio[ok])[::-1], np.log(-np.log(1.0 - pas[ok]))[::-1]
+    x, y = np.log(rotulo[ok])[::-1], np.log(-np.log(1.0 - pas[ok]))[::-1]
     return float(np.exp(np.interp(np.log(-np.log(1.0 - p)), y, x)))
 
 
-def simular_bougainville(convencion_modsim: bool = True) -> CircuitResult:
-    return simulate("cerrado_directo", bougainville_config(convencion_modsim), tol=1e-10)
+def simular_bougainville(convencion: str = "modsim") -> CircuitResult:
+    return simulate("cerrado_directo", bougainville_config(convencion), tol=1e-10)
