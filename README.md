@@ -81,6 +81,11 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 
 - **No reemplaza a un simulador industrial calibrado.** Los parámetros por defecto son
   razonables pero no están calibrados con datos reales de una planta.
+- **Validado contra 3 plantas reales publicadas:** ciclones de Vazante, balance de Madneuli
+  y energía de Bond de Constancia. Las tolerancias se fijaron antes de correr. Detalle y
+  hallazgos en [docs/VALIDACION_PLANTAS_REALES.md](docs/VALIDACION_PLANTAS_REALES.md). El
+  ejemplo Bougainville de MODSIM no se puede reproducir porque usa modelos de molino y de
+  ciclón que este simulador no tiene.
 - Un solo mineral (una densidad de sólidos), sin liberación ni mineralogía.
 - El molino es de mezcla perfecta; no modela carga de bolas, potencia ni escalamiento.
 - El ciclón usa una curva de eficiencia con d50c fijo: **no** predice d50c a partir de la
@@ -92,7 +97,8 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   para los nudos del molino.
 - El caso de validación contra MODSIM 3.6 queda **pendiente de que el usuario cargue los
   datos** y complete la columna «MODSIM»; no se han comparado números todavía.
-- La energía de Bond usa Wi constante, sin factores de corrección de eficiencia.
+- La energía de Bond usa Wi constante, sin factores de corrección de eficiencia. En
+  Constancia, con mineral supérgeno, la planta gastó en promedio 40 % más que Bond.
 - Las páginas exactas de algunas referencias (Kelsall, Bond, Lynch-Rao) no fueron
   verificadas contra el original.
 
@@ -113,9 +119,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
-               circuits, reconcile, fitting, synthetic, validacion
+               circuits, reconcile, fitting, synthetic, validacion, plantas_reales
 app/           streamlit_app.py
-docs/          teoria.md, caso-validacion-modsim.md, img/
+docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md, img/
 tests/         pytest (cobertura >= 90 %)
 ```
 
