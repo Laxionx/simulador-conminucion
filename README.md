@@ -4,6 +4,11 @@ Python simulator for ball-mill / hydrocyclone circuits, built from scratch from 
 Includes a modular flowsheet solver with recycles, plant-data reconciliation and parameter fitting with confidence intervals, and a Streamlit app.
 
 [![CI](https://github.com/Laxionx/simulador-conminucion/actions/workflows/ci.yml/badge.svg)](https://github.com/Laxionx/simulador-conminucion/actions/workflows/ci.yml)
+[![Abrir en Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://simulador-conminucion-mtxoolyzuvvcxrq8rce3el.streamlit.app/)
+
+**[Pruébalo en el navegador](https://simulador-conminucion-mtxoolyzuvvcxrq8rce3el.streamlit.app/),
+sin instalar nada.** Si nadie la usó en unos días, la app está dormida: el botón para despertarla
+tarda un minuto.
 
 ## Qué es
 
