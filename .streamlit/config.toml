@@ -1,0 +1,17 @@
+# Configuración para la app pública (Streamlit Community Cloud). La app no sube archivos, no usa
+# secretos y todos sus controles tienen límites.
+
+[client]
+# Sin trazas ni rutas internas en el navegador: solo un mensaje genérico.
+showErrorDetails = "none"
+# Oculta las opciones de desarrollador (rerun, clear cache, deploy) a los visitantes.
+toolbarMode = "viewer"
+
+[server]
+# La app no recibe archivos.
+maxUploadSize = 1
+enableXsrfProtection = true
+runOnSave = false
+
+[browser]
+gatherUsageStats = false

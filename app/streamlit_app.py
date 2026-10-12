@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-from conminucion.circuits import KINDS, CircuitConfig, simulate
+# Streamlit Community Cloud instala solo requirements.txt: el paquete se importa desde la raíz.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from conminucion.circuits import KINDS, CircuitConfig, simulate  # noqa: E402
 from conminucion.classifier import EfficiencyCurve
 from conminucion.fitting import fit_cyclone_partition, fit_mill_knots
 from conminucion.flowsheet import ConvergenceError
@@ -182,19 +188,23 @@ def fitting_tab(cfg: CircuitConfig) -> None:
     st.pyplot(fig)
 
     st.subheader("2. Reconciliación del nodo del ciclón")
-    sim = simulate("cerrado_directo", cfg, wegstein=True)
-    sv = synthetic_cyclone_survey(sim.streams["alim_ciclon"], cfg.classifier, rel, seed=seed)
-    rc = reconcile_node(sv.feed, sv.underflow, sv.overflow)
-    true_cl = sim.circulating_load
-    st.write(
-        f"Fracción de sólidos al underflow: verdadera {sv.true_r:.4f}, reconciliada "
-        f"{rc.r_underflow:.4f}. Carga circulante: verdadera {true_cl:.3f}, "
-        f"reconciliada {rc.circulating_load:.3f} (χ² ponderado {rc.chi2:.2f})."
-    )
-    st.caption(
-        "La partición derivada de datos reconciliados tiene errores heterocedásticos; "
-        "sus IC por jacobiano pueden ser optimistas (ver README)."
-    )
+    try:
+        sim = simulate("cerrado_directo", cfg, wegstein=True)
+    except ConvergenceError as exc:
+        st.warning(f"El circuito cerrado directo no se puede reconciliar con estos datos: {exc}")
+    else:
+        sv = synthetic_cyclone_survey(sim.streams["alim_ciclon"], cfg.classifier, rel, seed=seed)
+        rc = reconcile_node(sv.feed, sv.underflow, sv.overflow)
+        true_cl = sim.circulating_load
+        st.write(
+            f"Fracción de sólidos al underflow: verdadera {sv.true_r:.4f}, reconciliada "
+            f"{rc.r_underflow:.4f}. Carga circulante: verdadera {true_cl:.3f}, "
+            f"reconciliada {rc.circulating_load:.3f} (χ² ponderado {rc.chi2:.2f})."
+        )
+        st.caption(
+            "La partición derivada de datos reconciliados tiene errores heterocedásticos; "
+            "sus IC por jacobiano pueden ser optimistas (ver README)."
+        )
 
     st.subheader("3. Molino: r/d por nudos desde alimentación y descarga")
     true_mill = BallMill(KnotSelection(KNOT_SIZES, KNOT_RD), cfg.mill.fracture, cfg.mill.n_mixers)
