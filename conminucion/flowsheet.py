@@ -28,6 +28,9 @@ class Solution:
     iterations: int
     converged: bool
     residuals: list[float] = field(default_factory=list)
+    # Sólidos (t/h) en las corrientes de corte que produce cada iteración: muestra cómo se
+    # llena el reciclo hasta converger. Vacía si no hay reciclo.
+    tear_history: list[float] = field(default_factory=list)
 
 
 class Flowsheet:
@@ -110,14 +113,16 @@ class Flowsheet:
         x = self._encode(guess)
         x_prev = g_prev = None
         residuals: list[float] = []
+        history: list[float] = []
         for it in range(1, max_iter + 1):
             streams, produced = self._pass(x)
             g = self._encode(produced)
             err = float(np.max(np.abs(g - x)) / max(np.max(np.abs(g)), 1e-300))
             residuals.append(err)
+            history.append(float(sum(produced[t].total_solids for t in self.tears)))
             if err <= tol:
                 streams.update(produced)
-                return Solution(streams, it, True, residuals)
+                return Solution(streams, it, True, residuals, history)
             if wegstein and g_prev is not None:
                 dx = x - x_prev
                 safe = np.where(np.abs(dx) > 1e-14, dx, 1.0)

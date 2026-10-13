@@ -77,14 +77,20 @@ class BallMill:
         if self.n_mixers < 1 or self.added_water < 0:
             raise ValueError("n_mixers>=1 y added_water>=0")
 
-    def discharge_solids(self, grid: SizeGrid, feed: NDArray) -> NDArray[np.float64]:
-        """N mezcladores en serie, cada uno con (r/d)/N (equivale a tau/N)."""
+    def mixer_profiles(self, grid: SizeGrid, feed: NDArray) -> list[NDArray[np.float64]]:
+        """Sólidos (t/h por clase) a la salida de cada mezclador; el último es la descarga."""
         rd = self.selection.rd_vector(grid) / self.n_mixers
         a = self.fracture.appearance(grid)
         p = np.asarray(feed, dtype=float)
+        profiles = []
         for _ in range(self.n_mixers):
             p = solve_mixer(p, rd, a)
-        return p
+            profiles.append(p)
+        return profiles
+
+    def discharge_solids(self, grid: SizeGrid, feed: NDArray) -> NDArray[np.float64]:
+        """N mezcladores en serie, cada uno con (r/d)/N (equivale a tau/N)."""
+        return self.mixer_profiles(grid, feed)[-1]
 
     def __call__(self, feed: Stream) -> Stream:
         p = self.discharge_solids(feed.grid, feed.solids)

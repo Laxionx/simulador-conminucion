@@ -20,6 +20,17 @@ import numpy as np
 
 MILL_TYPE_FACTORS = {"rebalse": 1.0, "parrilla_humedo": 1.16, "parrilla_seco": 1.08}
 BALL_SIZE_FACTOR_MIN_DIAMETER = 3.3  # m
+G = 9.80665  # m/s²
+
+
+def critical_speed_rpm(diameter_m: float, ball_mm: float = 0.0) -> float:
+    """Velocidad crítica (rpm): la bola en lo alto del tambor no cae porque la fuerza
+    centrífuga iguala a su peso, ω² (D - d)/2 = g. Da N = 42,3/√(D - d) con D y d en m, la
+    forma usual de los textos de procesamiento de minerales."""
+    gap = diameter_m - ball_mm / 1000.0
+    if gap <= 0:
+        raise ValueError("El diámetro del molino debe ser mayor que el de la bola")
+    return 60.0 / (2.0 * np.pi) * float(np.sqrt(2.0 * G / gap))
 
 
 @dataclass(frozen=True)

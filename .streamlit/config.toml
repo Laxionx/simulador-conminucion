@@ -15,3 +15,14 @@ runOnSave = false
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+# Cuaderno de planta: papel cálido, tinta oscura, terracota de acento (el color de los gruesos
+# que vuelven al molino). Títulos con serifa, texto sin serifa.
+base = "light"
+primaryColor = "#C0462B"
+backgroundColor = "#FBF9F4"
+secondaryBackgroundColor = "#EFE9DD"
+textColor = "#1F2A30"
+font = "sans-serif"
+headingFont = "serif"

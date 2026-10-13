@@ -1,4 +1,4 @@
-"""App Streamlit del simulador de conminución: simulación de circuitos y ajuste a datos."""
+"""App Streamlit del simulador de conminución: guía, simulación con equipos animados y ajuste."""
 
 from __future__ import annotations
 
@@ -10,115 +10,49 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# Streamlit Community Cloud instala solo requirements.txt: el paquete se importa desde la raíz.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# Streamlit Community Cloud instala solo requirements.txt: el paquete se importa desde la raíz,
+# y los módulos de la app, desde esta carpeta.
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "app"))
 
-from conminucion.circuits import KINDS, CircuitConfig, simulate  # noqa: E402
-from conminucion.classifier import EfficiencyCurve
-from conminucion.fitting import fit_cyclone_partition, fit_mill_knots
-from conminucion.flowsheet import ConvergenceError
-from conminucion.fracture import Fracture
-from conminucion.mill import AustinSelection, BallMill, KnotSelection
-from conminucion.reconcile import reconcile_node
-from conminucion.sizes import SizeGrid, gaudin_schuhmann, rosin_rammler
-from conminucion.stream import Stream
-from conminucion.synthetic import (
+from animaciones import (  # noqa: E402
+    convergence_figure,
+    journey,
+    journey_figure,
+    passing_figure,
+)
+from controles import KNOT_RD, KNOT_SIZES, MillGeometry, sidebar_config  # noqa: E402
+from equipos import (  # noqa: E402
+    MOTION_CSS,
+    STREAM_NAMES,
+    as_images,
+    cyclone_svg,
+    es,
+    flowsheet_svg,
+    mill_svg,
+    rotation_period_s,
+)
+from guia import guide_tab  # noqa: E402
+
+from conminucion.circuits import FRESH, CircuitConfig, CircuitResult, simulate  # noqa: E402
+from conminucion.classifier import EfficiencyCurve  # noqa: E402
+from conminucion.fitting import fit_cyclone_partition, fit_mill_knots  # noqa: E402
+from conminucion.flowsheet import ConvergenceError  # noqa: E402
+from conminucion.mill import BallMill, KnotSelection  # noqa: E402
+from conminucion.power import bond_mill_power  # noqa: E402
+from conminucion.reconcile import reconcile_node  # noqa: E402
+from conminucion.synthetic import (  # noqa: E402
     synthetic_cyclone_survey,
     synthetic_mill_survey,
     synthetic_partition_curve,
 )
 
 st.set_page_config(page_title="Simulador de conminución", layout="wide")
-
-LABELS = {
-    "abierto": "Molino en circuito abierto",
-    "cerrado_directo": "Circuito cerrado directo",
-    "cerrado_inverso": "Circuito cerrado inverso",
-}
-KNOT_SIZES = (4750.0, 1187.0, 297.0, 74.0)
-KNOT_RD = (0.9, 1.6, 1.0, 0.35)
+METHODS = {True: "Wegstein", False: "Sustitución sucesiva"}
 
 
-def sidebar_config() -> tuple[str, CircuitConfig, bool]:
-    """Lee los controles de la barra lateral y arma la configuración del circuito."""
-    sb = st.sidebar
-    kind = sb.selectbox("Preset de circuito", KINDS, index=1, format_func=LABELS.get)
-    sb.subheader("Tamices y alimentación")
-    top = sb.number_input("Tamiz superior (µm)", 1000.0, 50000.0, 9500.0, 500.0)
-    n = sb.slider("Número de tamices", 8, 24, 17)
-    grid = SizeGrid.geometric(top, n)
-    tph = sb.number_input("Sólidos frescos (t/h)", 1.0, 5000.0, 100.0)
-    rho = sb.number_input("Densidad de sólidos (t/m³)", 1.0, 8.0, 2.7, 0.1)
-    water = sb.number_input("Agua en la alimentación (t/h)", 0.0, 5000.0, 0.0)
-    dist = sb.radio("Distribución", ["Rosin-Rammler", "Gaudin-Schuhmann"], horizontal=True)
-    if dist == "Rosin-Rammler":
-        x63 = sb.number_input("x63 (µm)", 100.0, 40000.0, 3200.0)
-        m = sb.number_input("m", 0.2, 5.0, 1.0, 0.1)
-        fr = rosin_rammler(grid, x63, m)
-    else:
-        k = sb.number_input("k (µm)", 100.0, 60000.0, 12000.0)
-        a = sb.number_input("α", 0.2, 3.0, 0.8, 0.05)
-        fr = gaudin_schuhmann(grid, k, a)
-    fresh = Stream.from_fractions(grid, fr, tph, water, rho)
-
-    sb.subheader("Molino de bolas")
-    param = sb.radio("Parametrización de r/d", ["Austin (S, τ)", "Nudos r/d"], horizontal=True)
-    if param.startswith("Austin"):
-        sel = AustinSelection(
-            sb.number_input("A (1/min)", 0.01, 10.0, 0.8, 0.1),
-            sb.number_input("α (selección)", 0.1, 3.0, 0.9, 0.1),
-            sb.number_input("μ (µm)", 100.0, 20000.0, 2500.0, 100.0),
-            sb.number_input("Λ", 0.5, 10.0, 3.0, 0.5),
-            sb.number_input("τ (min)", 0.1, 60.0, 3.0, 0.5),
-        )
-    else:
-        rds = [
-            sb.number_input(f"r/d @ {s:g} µm", 0.001, 20.0, v)
-            for s, v in zip(KNOT_SIZES, KNOT_RD, strict=True)
-        ]
-        sel = KnotSelection(KNOT_SIZES, tuple(rds))
-    frac = Fracture(
-        sb.slider("φ (fractura)", 0.0, 1.0, 0.6, 0.05),
-        sb.slider("γ", 0.2, 2.0, 0.8, 0.05),
-        sb.slider("β", 1.0, 6.0, 3.5, 0.1),
-    )
-    mill = BallMill(
-        sel,
-        frac,
-        sb.slider("Mezcladores en serie", 1, 8, 1),
-        sb.number_input("Agua de adición al molino (t/h)", 0.0, 1000.0, 0.0),
-    )
-
-    sb.subheader("Clasificador (hidrociclón)")
-    cls = EfficiencyCurve(
-        sb.number_input("d50c (µm)", 5.0, 5000.0, 100.0, 10.0),
-        sb.number_input("α (nitidez)", 0.5, 10.0, 3.0, 0.5),
-        sb.slider("Rf (bypass de agua)", 0.0, 0.9, 0.2, 0.05),
-    )
-    pct = sb.slider("% sólidos alimentación al ciclón", 20, 70, 45)
-    wi = sb.number_input("Wi de Bond (kWh/t)", 5.0, 30.0, 14.0, 0.5)
-    wegstein = sb.checkbox("Aceleración de Wegstein", value=True)
-    return kind, CircuitConfig(fresh, mill, cls, float(pct), wi), wegstein
-
-
-def passing_plot(streams: dict[str, Stream]) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(7, 4.2))
-    for name, s in streams.items():
-        if s.total_solids > 0:
-            ax.plot(s.grid.sieves, 100 * s.cumulative_passing, marker="o", ms=3, label=name)
-    ax.set(xscale="log", xlabel="Tamaño (µm)", ylabel="Pasante acumulado (%)", ylim=(0, 102))
-    ax.grid(True, which="both", alpha=0.3)
-    ax.legend(fontsize=8)
-    fig.tight_layout()
-    return fig
-
-
-def simulation_tab(kind: str, cfg: CircuitConfig, wegstein: bool) -> None:
-    try:
-        res = simulate(kind, cfg, wegstein=wegstein)
-    except ConvergenceError as exc:
-        st.error(str(exc))
-        return
+def _metrics(res: CircuitResult) -> None:
     s = res.streams
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("P80 del producto (µm)", f"{s[res.product].p80:.1f}")
@@ -127,10 +61,75 @@ def simulation_tab(kind: str, cfg: CircuitConfig, wegstein: bool) -> None:
     )
     c3.metric("Energía de Bond (kWh/t)", f"{res.bond_kwh_t:.2f}")
     c4.metric("Iteraciones", res.solution.iterations)
+
+
+def _energy(res: CircuitResult, geom: MillGeometry) -> tuple[float, float]:
+    """(kW en el piñón, toneladas de bolas) y la comparación con Bond."""
+    power = bond_mill_power(geom.diameter_m, geom.length_m, geom.filling, geom.speed,
+                            geom.top_ball_mm)  # fmt: skip
+    available = power.kw / res.streams[FRESH].total_solids
+    need = res.bond_kwh_t
+    c1, c2 = st.columns(2)
+    c1.metric("Energía que entrega el molino (kWh/t)", es(available, 2),
+              help="Potencia de Bond-Rowland dividida por las t/h frescas.")  # fmt: skip
+    c2.metric(
+        "Energía que pide Bond para este P80 (kWh/t)",
+        es(need, 2),
+        help="W = 10 Wi (1/√P80 − 1/√F80), sin factores de eficiencia de Rowland.",
+    )
+    verdict = "alcanza" if available >= need else "no alcanza"
+    st.caption(
+        f"Según Bond, el molino **{verdict}** para moler hasta este P80 "
+        f"({es(available / need if need else float('nan'), 2)} veces lo pedido). Chequeo grueso: "
+        "la cinética del molino (τ, selección) no depende de su potencia en este modelo."
+    )
+    return power.kw, power.balls_t
+
+
+def _convergence(kind: str, cfg: CircuitConfig, res: CircuitResult, wegstein: bool) -> None:
+    histories = {METHODS[wegstein]: res.solution.tear_history}
+    try:
+        other = simulate(kind, cfg, wegstein=not wegstein)
+        histories[METHODS[not wegstein]] = other.solution.tear_history
+    except ConvergenceError:
+        st.caption(f"{METHODS[not wegstein]} no converge en 500 iteraciones con estos datos.")
+    fresh = res.streams[FRESH].total_solids
+    st.plotly_chart(convergence_figure(fresh, histories), width="stretch")
+    st.caption(
+        "El reciclo arranca vacío. Cada iteración pasa el mineral por el molino y el ciclón y "
+        "devuelve más gruesos, hasta que lo que vuelve ya no cambia: eso es la carga "
+        "circulante final."
+    )
+
+
+def simulation_tab(kind: str, cfg: CircuitConfig, wegstein: bool, geom: MillGeometry,
+                   res: CircuitResult, flowsheet: str, animate: bool) -> None:  # fmt: skip
+    s = res.streams
+    _metrics(res)
+    st.html(flowsheet)
+    st.markdown("#### Energía del molino")
+    kw, balls = _energy(res, geom)
+    st.markdown("#### Los equipos por dentro")
+    left, right = st.columns(2)
+    args = (geom.diameter_m, geom.length_m, geom.filling, geom.speed, geom.top_ball_mm, kw, balls)
+    left.html(as_images(mill_svg(*args, paused=not animate), mill_svg(*args, paused=True),
+                        "Molino de bolas en corte"))  # fmt: skip
+    if kind != "abierto":
+        flows = (s["alim_ciclon"], s["underflow"], s["overflow"])
+        right.html(as_images(cyclone_svg(*flows, not animate), cyclone_svg(*flows, True),
+                             "Hidrociclón"))  # fmt: skip
+    st.plotly_chart(journey_figure(journey(kind, res, cfg), s[FRESH].grid.sieves),
+                    width="stretch")  # fmt: skip
+    st.caption("Aprieta «Reproducir»: cada paso agrega una etapa del recorrido, incluida la "
+               "salida de cada mezclador del molino.")  # fmt: skip
+    if kind != "abierto":
+        _convergence(kind, cfg, res, wegstein)
+    st.markdown("#### Corrientes")
     left, right = st.columns([3, 2])
-    left.pyplot(passing_plot(s))
+    left.plotly_chart(passing_figure(s), width="stretch")
     table = res.table()
-    right.dataframe(table.round(3), hide_index=True)
+    shown = table.assign(corriente=table["corriente"].map(lambda n: STREAM_NAMES.get(n, n)))
+    right.dataframe(shown.round(3), hide_index=True)
     bal = res.balance
     right.caption(
         f"Balance: sólidos in {bal['solidos_in']:.3f} / out {bal['solidos_out']:.3f} t/h "
@@ -186,6 +185,7 @@ def fitting_tab(cfg: CircuitConfig) -> None:
     ax.legend()
     ax.grid(True, which="both", alpha=0.3)
     st.pyplot(fig)
+    plt.close(fig)
 
     st.subheader("2. Reconciliación del nodo del ciclón")
     try:
@@ -215,11 +215,37 @@ def fitting_tab(cfg: CircuitConfig) -> None:
 
 def main() -> None:
     st.title("Simulador de circuitos de molienda y clasificación")
-    st.caption("Construido desde ecuaciones publicadas (Whiten, Austin, Lynch-Rao, Bond).")
-    kind, cfg, wegstein = sidebar_config()
-    tab_sim, tab_fit = st.tabs(["Simulación", "Ajuste a datos (muestreo sintético)"])
+    st.caption(
+        "Construido desde ecuaciones publicadas (Whiten, Austin, Lynch-Rao, Bond). Empieza por "
+        "la **Guía**; los datos se cambian en la barra lateral."
+    )
+    st.html(MOTION_CSS)
+    kind, cfg, wegstein, geom = sidebar_config()
+    animate = st.toggle(
+        "Mover los equipos", value=True,
+        help="Apaga las animaciones de los esquemas. También se apagan solas si el sistema "
+        "tiene activado «reducir movimiento».",
+    )  # fmt: skip
+    try:
+        res, error = simulate(kind, cfg, wegstein=wegstein), None
+    except ConvergenceError as exc:
+        res, error = None, exc
+    sheets: dict[str, str | None] = {"guia": None, "sim": None}
+    if res is not None:
+        period = rotation_period_s(geom.diameter_m, geom.speed, geom.top_ball_mm)
+        still = flowsheet_svg(kind, res.streams, period, True)
+        moving = flowsheet_svg(kind, res.streams, period, not animate)
+        sheets = {tag: as_images(moving, still, "Diagrama de flujo del circuito") for tag in sheets}
+    tab_guide, tab_sim, tab_fit = st.tabs(
+        ["Guía", "Simulación", "Ajuste a datos (muestreo sintético)"]
+    )
+    with tab_guide:
+        guide_tab(kind, sheets["guia"])
     with tab_sim:
-        simulation_tab(kind, cfg, wegstein)
+        if res is None:
+            st.error(str(error))
+        else:
+            simulation_tab(kind, cfg, wegstein, geom, res, sheets["sim"], animate)
     with tab_fit:
         fitting_tab(cfg)
 

@@ -28,9 +28,15 @@ todo sale de las ecuaciones de la literatura, documentadas una por una en
 
 ## Capturas
 
-| Simulación (circuito cerrado directo) | Ajuste con muestreo sintético |
+| Guía: qué simula y qué datos necesita | Simulación con el diagrama animado |
 |---|---|
-| ![Simulación](docs/img/app-simulacion.png) | ![Ajuste](docs/img/app-ajuste.png) |
+| ![Guía](docs/img/app-guia.png) | ![Simulación](docs/img/app-simulacion.png) |
+| **Energía y los equipos por dentro** | **Ajuste con muestreo sintético** |
+| ![Equipos](docs/img/app-equipos.png) | ![Ajuste](docs/img/app-ajuste.png) |
+
+En la app, el tambor gira a las rpm reales del molino (% de la velocidad crítica), la carga de
+bolas ocupa el llenado dado y cada corriente se dibuja con el grosor y la velocidad de su
+caudal. Con «reducir movimiento» activado en el sistema, los esquemas se muestran quietos.
 
 ## Cómo correrlo
 
@@ -95,7 +101,10 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Reconciliación de nodo por mínimos cuadrados ponderados con restricciones.
 - Ajuste de d50c, α y Rf (ciclón) y de r/d por nudos (molino), IC por covarianza del jacobiano.
 - Muestreo de planta sintético que comprueba la recuperación de parámetros dentro de su IC.
-- App Streamlit con curvas de pasante, tabla de corrientes, carga circulante, energía y CSV.
+- App Streamlit con una guía (qué simula, ecuaciones, qué datos necesita y cómo se mide cada
+  uno en planta), el diagrama de flujo y los equipos animados con datos del cálculo, la
+  convergencia del reciclo y la granulometría etapa por etapa, potencia del molino
+  (Bond-Rowland), curvas de pasante, tabla de corrientes y CSV.
 
 ## Alcance y limitaciones honestas
 
