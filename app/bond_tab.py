@@ -79,7 +79,7 @@ def _ask(c: Campo, container) -> float:
     # Un campo entero también es un número decimal para Streamlit: con un número_input entero, un
     # NaN o un infinito mandados por un cliente rompen su deserializador antes de llegar aquí.
     return container.number_input(label, float(c.lo), float(c.hi), float(c.default),
-                                  float(c.step), format="%d" if c.integer else None, help=help_,
+                                  float(c.step), format="%.0f" if c.integer else None, help=help_,
                                   key=key)  # fmt: skip
 
 
@@ -177,7 +177,7 @@ def simulation(animate: bool) -> None:
     st.markdown(t("bond.h.sim"))
     st.markdown(t("bond.sim.intro", a=es(case.seleccion.A, 3), alpha=es(case.seleccion.alpha, 3)))
     n = len(case.simulado.ciclos)
-    left, right = st.columns([2, 3])
+    left, right = st.columns(2)
     k = int(
         right.slider(t("bond.sim.cycle"), 1, n, n, help=t("bond.sim.cycle.help"), key=CYCLE_KEY)
     )
