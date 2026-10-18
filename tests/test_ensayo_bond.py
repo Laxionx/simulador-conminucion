@@ -232,3 +232,35 @@ def test_el_resultado_negativo_del_wi_queda_fijado(caso):
     # si el modelo cambia, este valor cambia y el cambio no pasa desapercibido
     assert caso[3].wi == pytest.approx(9.59, abs=0.05)
     assert caso[3].p80_um == pytest.approx(106.5, abs=1.0)
+
+
+def test_la_regla_de_revoluciones_rechaza_un_gbp_no_positivo():
+    for gbp in (0.0, -1.0):
+        with pytest.raises(ValueError):
+            siguientes_revoluciones(390.0, 100.0, gbp)
+
+
+def test_la_simulacion_coincide_con_una_reimplementacion_independiente(caso):
+    """Oráculo: el mismo ensayo con solo exponencial de matriz y tamizado a mano, sin las
+    funciones del módulo que se prueba (salvo la selección y la fractura)."""
+    alim, fr, sel, sim = caso
+    grid, i0 = alim.grid, alim.idx_tamiz
+    m = matriz_generadora(seleccion_lotes(grid, sel), fr.appearance(grid))
+    w = CARGA * alim.fracciones
+    fraccion = FINOS_CARGA / CARGA
+    rev, gbps, finos_ciclos = REV1, [], []
+    for _ in range(11):
+        salida = expm(m * rev / 70.0) @ w
+        finos = salida[i0:].sum()
+        gbps.append((finos - w[i0:].sum()) / rev)
+        finos_ciclos.append(salida.copy())
+        finos_ciclos[-1][:i0] = 0.0
+        w = salida.copy()
+        w[i0:] = 0.0
+        w += finos * alim.fracciones
+        rev = round((CARGA / 3.5 - fraccion * finos) / gbps[-1])
+    assert [c.gbp for c in sim.ciclos] == pytest.approx(gbps, rel=1e-9)
+    assert sim.gbp_final == pytest.approx(np.mean(gbps[-3:]), rel=1e-12)
+    producto = np.sum(finos_ciclos[-3:], axis=0)
+    assert sim.p80_um == pytest.approx(size_at_passing(alim.grid, producto, 0.8), rel=1e-9)
+    assert abs(sim.p80_um - size_at_passing(alim.grid, finos_ciclos[-1], 0.8)) > 1e-3  # 3 ciclos
