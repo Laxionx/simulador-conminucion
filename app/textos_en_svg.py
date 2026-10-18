@@ -8,6 +8,7 @@ T = {
     "svg.mill.rpm": "= {rpm} rpm, one turn every {period} s",
     "svg.mill.power": "Power at the pinion: {kw} kW",
     "svg.mill.balls": "Ball charge: {t} t (Bond-Rowland)",
+    "svg.mill.lab": "Charge: {n} balls, {kg} kg",
     "svg.mill.note1": "Diagram, not to scale. Rotation and area of the charge:",
     "svg.mill.note2": "from the calculation. Tilt and falling balls: illustrative.",
     "svg.mill.label": "Animated diagram of the ball mill in section",

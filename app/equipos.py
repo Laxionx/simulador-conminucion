@@ -188,11 +188,21 @@ def mill_svg(
     power_kw: float,
     balls_t: float,
     paused: bool = False,
+    lab_balls: tuple[int, float] | None = None,
 ) -> str:
+    """Molino en corte. `lab_balls` = (bolas, kg) para el molino de laboratorio de Bond: no se
+    muestra la potencia de Bond-Rowland (no vale a esa escala) y la carga se rotula en bolas."""
     cx, cy, r = 210.0, 205.0, 150.0
     period = rotation_period_s(diameter_m, speed_frac, top_ball_mm)
     rpm = 60.0 / period
     theta = charge_angle(filling)
+    dec = 1 if lab_balls is None else 3
+    charge_rows = (
+        [(t("svg.mill.power", kw=es(power_kw, 0)), 23, "t", INK),
+         (t("svg.mill.balls", t=es(balls_t, 0)), 21, "", INK)]
+        if lab_balls is None
+        else [(t("svg.mill.lab", n=es(lab_balls[0], 0), kg=es(lab_balls[1], 3)), 21, "", INK)]
+    )  # fmt: skip
     seg, (shoulder, toe) = _segment(cx, cy, r - 10, theta, math.radians(CHARGE_TILT_DEG))
     lifters = "".join(
         f'<rect x="{cx - 5:.1f}" y="{cy - r + 2:.1f}" width="10" height="16" fill="{STEEL}" '
@@ -226,12 +236,11 @@ def mill_svg(
         f'<circle cx="{cx}" cy="{cy - r - 6}" r="4" fill="{PAPER}"/></g>'
         + _lines(390, 44, [
             (t("svg.mill.title"), 28, "t", INK),
-            (t("svg.mill.dims", d=es(diameter_m), l=es(length_m)), 21, "", INK),
+            (t("svg.mill.dims", d=es(diameter_m, dec), l=es(length_m, dec)), 21, "", INK),
             (t("svg.mill.fill", v=es(100 * filling, 0)), 21, "", INK),
             (t("svg.mill.speed", v=es(100 * speed_frac, 0)), 21, "", INK),
             (t("svg.mill.rpm", rpm=es(rpm), period=es(period, 2)), 21, "", INK),
-            (t("svg.mill.power", kw=es(power_kw, 0)), 23, "t", INK),
-            (t("svg.mill.balls", t=es(balls_t, 0)), 21, "", INK),
+            *charge_rows,
         ])
         + _lines(390, 362, [
             (t("svg.mill.note1"), 16, "", STEEL),

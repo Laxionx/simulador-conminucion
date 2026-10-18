@@ -8,6 +8,7 @@ T = {
     "svg.mill.rpm": "= {rpm} rpm, una vuelta cada {period} s",
     "svg.mill.power": "Potencia en el piñón: {kw} kW",
     "svg.mill.balls": "Carga de bolas: {t} t (Bond-Rowland)",
+    "svg.mill.lab": "Carga: {n} bolas, {kg} kg",
     "svg.mill.note1": "Esquema, no a escala. Giro y área de la carga:",
     "svg.mill.note2": "del cálculo. Inclinación y caída: ilustrativas.",
     "svg.mill.label": "Esquema animado del molino de bolas en corte",

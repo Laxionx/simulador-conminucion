@@ -83,6 +83,7 @@ def test_ningun_texto_esta_vacio_y_solo_los_cognados_son_iguales_en_los_dos_idio
     same = {k for k in ES if ES[k] == EN[k]}
     # símbolos (α, μ, d50c...), fórmulas, unidades, «Balance», «Wegstein» y textos de solo campos
     assert same == {
+        "bond.no", "bond.res.wi", "bond.t.gbp",
         "dato.A.label", "dato.a.label", "dato.beta.label", "dato.d50c.label", "dato.gamma.label",
         "dato.k.label", "dato.lam.label", "dato.m.label", "dato.mu.label", "dato.x63.label",
         "method.wegstein", "opt.Austin (S, τ)", "out.5.name", "step.1.latex", "step.2.latex",
@@ -171,7 +172,7 @@ def test_parse_lang_solo_acepta_es_y_en():
 def test_lang_en_en_la_url_abre_en_ingles_y_el_selector_cambia_el_idioma():
     en = run("en")
     assert [t.label for t in en.tabs] == [
-        "Guide", "Simulation", "Fitting to data (synthetic survey)"
+        "Guide", "Simulation", "Fitting to data (synthetic survey)", "Bond test"
     ]  # fmt: skip
     assert en.sidebar.radio[0].value == "en"
     en.sidebar.radio[0].set_value("es").run()
@@ -207,7 +208,7 @@ def test_los_datos_y_las_listas_se_conservan_al_cambiar_de_idioma():
 def test_humo_de_todas_las_pestanas(lang, kind):
     at = run(lang, kind=kind)
     assert not at.exception and not at.error
-    assert len(at.tabs) == 3 and len(at.metric) == 6
+    assert len(at.tabs) == 4 and len(at.metric) == 6
     assert at.sidebar.selectbox[0].value == i18n_opt(lang, kind)
 
 
@@ -261,6 +262,28 @@ def test_las_cifras_son_identicas_en_los_dos_idiomas(values):
     a, b = _figures(es_, "es"), _figures(en, "en")
     assert len(a) == len(b) > 20 and a == b
     assert len(es_.metric) == len(en.metric) == 6
+
+
+def _bond_numbers(at: AppTest, lang: str) -> list[list[float]]:
+    """Los números de cada texto de la pestaña «Ensayo de Bond» (todo lo que sigue a su ficha)."""
+    heads = [i for i, m in enumerate(at.markdown) if m.value.startswith("#### ")]
+    texts = [m.value for m in at.markdown][heads[-3] :]  # ficha, calculadora y simulación
+    return [_numbers(x, lang) for x in texts]
+
+
+def test_la_pestana_bond_tiene_las_mismas_cifras_en_los_dos_idiomas():
+    es_, en = run("es"), run("en")
+    a, b = _bond_numbers(es_, "es"), _bond_numbers(en, "en")
+    assert len(a) == len(b) > 8 and a == b
+    assert any(10.92 in x for x in a)  # el Wi de la calculadora está entre las cifras comparadas
+
+
+def test_los_numeros_de_la_pestana_bond_cambian_de_formato_pero_no_de_valor():
+    es_, en = run("es"), run("en")
+    assert any("Wi = 10,92 kWh/t" in m.value for m in es_.markdown)
+    assert any("Wi = 10.92 kWh/t" in m.value for m in en.markdown)
+    assert any("simulado **2,7439**" in m.value for m in es_.markdown)
+    assert any("simulated **2.7439**" in m.value for m in en.markdown)
 
 
 # ------------------------------------------------------------------ los gráficos y los esquemas

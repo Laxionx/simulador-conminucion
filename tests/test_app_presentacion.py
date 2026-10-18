@@ -203,13 +203,14 @@ def test_el_recorrido_termina_en_la_descarga_del_molino(kind):
     assert len(fig.frames[0].data[1].y) == 0  # al inicio, la etapa 2 aún vacía
 
 
-def test_la_app_muestra_las_tres_pestanas_y_la_energia():
+def test_la_app_muestra_las_cuatro_pestanas_y_la_energia():
     at = AppTest.from_file(APP, default_timeout=180).run()
     assert not at.exception
     assert [t.label for t in at.tabs] == [
         "Guía",
         "Simulación",
         "Ajuste a datos (muestreo sintético)",
+        "Ensayo de Bond",
     ]
     labels = [m.label for m in at.metric]
     assert "Energía que entrega el molino (kWh/t)" in labels

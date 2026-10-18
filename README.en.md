@@ -89,6 +89,37 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Synthetic plant survey that checks the recovery of parameters within their CI.
 - Streamlit app with a guide (what it simulates, equations, what data it needs and how each one is measured in a plant), the flowsheet and the equipment animated with data from the calculation, the convergence of the recycle and the size distribution stage by stage, mill power (Bond-Rowland), passing curves, stream table and CSV.
 
+## Virtual Bond test
+
+The "Bond test" tab shows, cycle by cycle, how the ball mill test is run (305 × 305 mm, 70 rpm,
+250 % circulating load) and where the Wi comes from, in two parts:
+
+- **Calculator** (`conminucion/ensayo_bond.py`): the bookkeeping of the GMG procedure (2021, open
+  access). It reproduces the 11 cycles of the Hebei magnetite (Liang et al., 2016, *Minerals*
+  6(2), 39, CC BY): final Gbp 2.5811 g/rev and Wi 10.92 kWh/t against 10.93 published. Of the 11
+  rows, 9 match the Gbp to 4 decimals and 2 differ by 0.001 because of the 0.1 g rounding of one
+  column; the revolutions match in 10 of 11: row 4 publishes 106, but its Gbp (291.5 g / 126 =
+  2.3135) and the GMG rule give 126, so it looks like a typo in the paper.
+- **Simulation**: a first-order batch grinding model (matrix exponential, Austin selection and
+  breakage) with ideal screening, fitted **only** to the new fines of cycles 1 and 2 (two
+  parameters, *a* and α) to predict cycles 3 to 11. The cuts were fixed before running: final Gbp
+  and Wi within ±10 % of the measurement.
+
+| Result | Simulated | Measured | Error | Cut ±10 % |
+|---|---|---|---|---|
+| Final Gbp (g/rev) | 2.7439 | 2.5811 | +6.3 % | passes |
+| Product P80 (µm) | 106.5 | 119.6 | −10.9 % | misses |
+| Wi (kWh/t) | 9.59 | 10.93 | −12.3 % | **misses** |
+
+The simulated Wi **misses the cut** and is left that way: it is a negative result (a strict
+`xfail` in the tests), with no extra parameters fitted to make it match. A 2023 review, "The
+truth about population balance modeling", argues that a batch test does not predict the closed
+circuit test in heterogeneous ores; here the simulated product comes out finer than the measured
+one. Declared assumptions: Rosin-Rammler feed through two points (F80 and % under the screen; the
+full curve of the paper is a chart), a size grid close to √2 from 3,350 µm with the 150 µm screen
+exactly on it, and μ, Λ and the breakage function at the simulator defaults (not measured for that
+ore).
+
 ## Scope and honest limitations
 
 - **It does not replace a calibrated industrial simulator.** The default parameters are reasonable but not calibrated with real data from a plant.
@@ -118,7 +149,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
-               desgaste, chancadora, plitt, modsim
+               desgaste, chancadora, plitt, modsim, ensayo_bond
 app/           streamlit_app.py (+ textos_es*.py and textos_en*.py: the texts of each language)
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
                desgaste.md, chancado.md, plitt.md, img/

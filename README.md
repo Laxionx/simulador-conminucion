@@ -110,6 +110,36 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   convergencia del reciclo y la granulometría etapa por etapa, potencia del molino
   (Bond-Rowland), curvas de pasante, tabla de corrientes y CSV.
 
+## Ensayo de Bond virtual
+
+La pestaña «Ensayo de Bond» muestra, ciclo a ciclo, cómo se hace el ensayo del molino de bolas
+(305 × 305 mm, 70 rpm, 250 % de carga circulante) y de dónde sale el Wi, con dos partes:
+
+- **Calculadora** (`conminucion/ensayo_bond.py`): la contabilidad del procedimiento de GMG (2021,
+  abierta). Reproduce los 11 ciclos de la magnetita de Hebei (Liang et al., 2016, *Minerals* 6(2),
+  39, CC BY): Gbp final 2,5811 g/rev y Wi 10,92 kWh/t frente a 10,93 publicado. De las 11 filas,
+  9 coinciden en el Gbp a 4 decimales y 2 difieren en 0,001 por el redondeo a 0,1 g de una
+  columna; las revoluciones coinciden en 10 de 11: la fila 4 publica 106, pero su Gbp
+  (291,5 g / 126 = 2,3135) y la regla de GMG dan 126, así que parece una errata del artículo.
+- **Simulación**: molienda por lotes de primer orden (exponencial de matriz, selección y fractura
+  de Austin) con tamizado ideal, ajustada **solo** a los finos nuevos de los ciclos 1 y 2 (dos
+  parámetros, *a* y α) para predecir los ciclos 3 a 11. Los cortes se fijaron antes de correr:
+  Gbp final y Wi a ±10 % de lo medido.
+
+| Resultado | Simulado | Medido | Error | Corte ±10 % |
+|---|---|---|---|---|
+| Gbp final (g/rev) | 2,7439 | 2,5811 | +6,3 % | pasa |
+| P80 del producto (µm) | 106,5 | 119,6 | −10,9 % | no pasa |
+| Wi (kWh/t) | 9,59 | 10,93 | −12,3 % | **no pasa** |
+
+El Wi simulado **no pasa**, y se deja así: es un resultado negativo (queda como `xfail` estricto
+en las pruebas), sin ajustar más parámetros para que cuadre. Una revisión de 2023, «The truth
+about population balance modeling», sostiene que un ensayo por lotes no predice el de ciclo
+cerrado en minerales heterogéneos; aquí el producto simulado sale más fino que el medido.
+Supuestos declarados: alimentación Rosin-Rammler por dos puntos (F80 y % bajo el tamiz; la curva
+completa del artículo es un gráfico), grilla casi √2 desde 3 350 µm con el tamiz de 150 µm
+exacto, y μ, Λ y la fractura en los valores por defecto del simulador (no medidos para esa mena).
+
 ## Alcance y limitaciones honestas
 
 - **No reemplaza a un simulador industrial calibrado.** Los parámetros por defecto son
@@ -156,7 +186,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
-               desgaste, chancadora, plitt, modsim
+               desgaste, chancadora, plitt, modsim, ensayo_bond
 app/           streamlit_app.py (+ textos_es*.py y textos_en*.py: los textos de cada idioma)
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
                desgaste.md, chancado.md, plitt.md, img/

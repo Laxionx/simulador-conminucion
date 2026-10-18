@@ -23,6 +23,7 @@ from animaciones import (  # noqa: E402
     journey_figure,
     passing_figure,
 )
+from bond_tab import bond_tab  # noqa: E402
 from controles import KNOT_RD, KNOT_SIZES, MillGeometry, sidebar_config  # noqa: E402
 from equipos import (  # noqa: E402
     MOTION_CSS,
@@ -223,7 +224,9 @@ def main() -> None:
         still = flowsheet_svg(kind, res.streams, period, True)
         moving = flowsheet_svg(kind, res.streams, period, not animate)
         sheets = {tag: as_images(moving, still, t("sim.alt.flow")) for tag in sheets}
-    tab_guide, tab_sim, tab_fit = st.tabs([t("tab.guide"), t("tab.sim"), t("tab.fit")])
+    tab_guide, tab_sim, tab_fit, tab_bond = st.tabs(
+        [t("tab.guide"), t("tab.sim"), t("tab.fit"), t("tab.bond")]
+    )
     with tab_guide:
         guide_tab(kind, sheets["guia"])
     with tab_sim:
@@ -233,6 +236,8 @@ def main() -> None:
             simulation_tab(kind, cfg, wegstein, geom, res, sheets["sim"], animate)
     with tab_fit:
         fitting_tab(cfg)
+    with tab_bond:
+        bond_tab(animate)
 
 
 main()
