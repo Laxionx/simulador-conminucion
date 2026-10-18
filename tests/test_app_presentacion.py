@@ -17,6 +17,7 @@ APP_DIR = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP_DIR))
 APP = str(APP_DIR / "streamlit_app.py")
 
+import i18n  # noqa: E402
 from animaciones import (  # noqa: E402
     MAX_FRAMES,
     convergence_figure,
@@ -82,8 +83,9 @@ def test_la_tabla_en_markdown_escapa_las_barras():
 @pytest.mark.parametrize("param", SELECTIONS)
 def test_todos_los_controles_tienen_ayuda_y_estan_en_la_tabla(dist, param):
     at = AppTest.from_file(APP, default_timeout=180).run()
-    at.sidebar.radio[0].set_value(dist)
-    at.sidebar.radio[1].set_value(param)
+    radios = {w.key: w for w in at.sidebar.radio}  # el idioma es el primero; estos, por su clave
+    radios["dato_dist"].set_value(dist)
+    radios["dato_param"].set_value(i18n.opt(param))
     at.run()
     assert not at.exception
     widgets = [*at.sidebar.number_input, *at.sidebar.slider, *at.sidebar.radio,

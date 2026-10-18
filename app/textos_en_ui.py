@@ -1,0 +1,122 @@
+"""English texts of the Simulation and Fitting tabs and of their charts."""
+
+T = {
+    "page.title": "Comminution simulator",
+    "app.title": "Grinding and classification circuit simulator",
+    "app.caption": (
+        "Built from published equations (Whiten, Austin, Lynch-Rao, Bond). Start with the "
+        "**Guide**; change the data in the sidebar."
+    ),
+    "toggle.label": "Animate the equipment",
+    "toggle.help": (
+        "Turns off the diagram animations. They also turn off by themselves if the system has "
+        "«reduce motion» enabled."
+    ),
+    "tab.guide": "Guide",
+    "tab.sim": "Simulation",
+    "tab.fit": "Fitting to data (synthetic survey)",
+    "method.wegstein": "Wegstein",
+    "method.succ": "Successive substitution",
+    "m.p80": "Product P80 (µm)",
+    "m.cl": "Circulating load",
+    "m.bond": "Bond energy (kWh/t)",
+    "m.iter": "Iterations",
+    "sim.h.energy": "#### Mill energy",
+    "sim.h.equip": "#### The equipment inside",
+    "sim.h.streams": "#### Streams",
+    "e.avail": "Energy the mill delivers (kWh/t)",
+    "e.avail.help": "Bond-Rowland power divided by the fresh t/h.",
+    "e.need": "Energy Bond asks for this P80 (kWh/t)",
+    "e.need.help": "W = 10 Wi (1/√P80 − 1/√F80), without Rowland efficiency factors.",
+    "e.yes": "is enough",
+    "e.no": "is not enough",
+    "e.caption": (
+        "According to Bond, the mill **{verdict}** to grind down to this P80 ({ratio} times what "
+        "is asked). Rough check: the mill kinetics (τ, selection) do not depend on its power in "
+        "this model."
+    ),
+    "sim.alt.flow": "Flowsheet of the circuit",
+    "sim.alt.mill": "Ball mill in section",
+    "sim.alt.cyclone": "Hydrocyclone",
+    "sim.journey": (
+        "Press «Play»: each step adds a stage of the route, including the output of each mixer "
+        "of the mill."
+    ),
+    "sim.balance": (
+        "Balance: solids in {in_} / out {out} t/h (error {err}); water added {water} t/h."
+    ),
+    "sim.dl.streams": "Export streams (CSV)",
+    "sim.dl.passing": "Export cumulative passing (CSV)",
+    "conv.noconv": "{method} does not converge in 500 iterations with these data.",
+    "conv.caption": (
+        "The recycle starts empty. Each iteration passes the ore through the mill and the "
+        "cyclone and returns more coarse particles, until what returns no longer changes: that "
+        "is the final circulating load."
+    ),
+    "tcol.corriente": "stream",
+    "tcol.solidos_t_h": "solids_t_h",
+    "tcol.agua_t_h": "water_t_h",
+    "tcol.pct_solidos": "pct_solids",
+    "tcol.P80_um": "P80_um",
+    "tcol.tamiz_um": "sieve_um",
+    "tid.alimentacion_fresca": "fresh_feed",
+    "tid.underflow": "underflow",
+    "tid.alim_molino": "mill_feed",
+    "tid.descarga_molino": "mill_discharge",
+    "tid.alim_ciclon": "cyclone_feed",
+    "tid.overflow": "overflow",
+    "tid.producto": "product",
+    "fit.intro": (
+        "**Synthetic** plant survey: data are generated with known parameters plus Gaussian "
+        "noise and the fit is checked to recover them within its 95 % CI (covariance of the "
+        "`least_squares` Jacobian)."
+    ),
+    "fit.seed": "Seed",
+    "fit.sigma": "Partition noise (absolute σ)",
+    "fit.rel": "Relative noise of the size distributions",
+    "fit.h1": "1. Cyclone: measured partition curve",
+    "fit.h2": "2. Reconciliation of the cyclone node",
+    "fit.h3": "3. Mill: r/d by knots from feed and discharge",
+    "fit.measured": "measured (synthetic)",
+    "fit.fitted": "fitted",
+    "fit.true": "true",
+    "fit.xlabel": "Size (µm)",
+    "fit.ylabel": "Partition to the underflow",
+    "fit.warn": "The direct closed circuit cannot be reconciled with these data: {exc}",
+    "fit.write": (
+        "Fraction of solids to the underflow: true {true_r}, reconciled {rec_r}. Circulating "
+        "load: true {true_cl}, reconciled {rec_cl} (weighted χ² {chi2})."
+    ),
+    "fit.cap": (
+        "The partition derived from reconciled data has heteroscedastic errors; its Jacobian "
+        "CIs may be optimistic (see the README)."
+    ),
+    "ci.param": "parameter",
+    "ci.true": "true",
+    "ci.est": "estimated",
+    "ci.lo": "CI95 low",
+    "ci.hi": "CI95 high",
+    "ci.in": "inside the CI",
+    "plot.play": "▶ Play",
+    "plot.pause": "⏸ Pause",
+    "plot.conv.name": "{label} ({n} iterations)",
+    "plot.conv.note": "Iteration {k}: ",
+    "plot.conv.title": "How the recycle fills up, iteration by iteration",
+    "plot.conv.x": "Iteration",
+    "plot.conv.y": "Circulating load (underflow / fresh)",
+    "plot.journey.mixer": "Mill: mixer {i} of {n}",
+    "plot.journey.mill": "Mill",
+    "plot.journey.product": "Product (mill discharge)",
+    "plot.journey.note": "Stage {i} of {n}: {label}",
+    "plot.journey.title": "The ore along the circuit",
+    "plot.size": "Size (µm)",
+    "plot.passing": "Cumulative passing (%)",
+    "plot.streams.title": "Size distribution of each stream",
+    "stream.alimentacion_fresca": "Fresh feed",
+    "stream.alim_molino": "Mill feed",
+    "stream.descarga_molino": "Mill discharge",
+    "stream.alim_ciclon": "Cyclone feed",
+    "stream.underflow": "Cyclone underflow (coarse)",
+    "stream.overflow": "Overflow (product)",
+    "stream.producto": "Product",
+}

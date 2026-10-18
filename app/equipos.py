@@ -13,6 +13,8 @@ import base64
 import math
 from html import escape
 
+from i18n import num, opt, t
+
 from conminucion.power import critical_speed_rpm
 from conminucion.stream import Stream
 
@@ -26,15 +28,6 @@ STREAM_COLORS = {
     "overflow": "#1F7A6F",  # producto fino
     "producto": "#1F7A6F",
 }
-STREAM_NAMES = {
-    "alimentacion_fresca": "Alimentación fresca",
-    "alim_molino": "Alimentación al molino",
-    "descarga_molino": "Descarga del molino",
-    "alim_ciclon": "Alimentación al ciclón",
-    "underflow": "Descarga del ciclón (gruesos)",
-    "overflow": "Rebalse (producto)",
-    "producto": "Producto",
-}
 SANS = "Segoe UI, Helvetica, Arial, sans-serif"
 R = ".cm-svg "  # todo el CSS del esquema queda dentro de su raíz
 SERIF = "Georgia, 'Times New Roman', serif"
@@ -45,8 +38,13 @@ STRIPE = 22  # px entre franjas del tambor en el diagrama
 
 
 def es(x: float, decimals: int = 1) -> str:
-    """Número con coma decimal y espacio de miles."""
-    return f"{x:,.{decimals}f}".replace(",", " ").replace(".", ",")
+    """Número con el formato del idioma (coma decimal y espacio de miles, o punto y coma)."""
+    return num(x, decimals)
+
+
+def stream_name(name: str) -> str:
+    """El nombre de una corriente en el idioma de la app (si no se conoce, el propio id)."""
+    return t("stream." + name) if name in STREAM_COLORS else name
 
 
 def _css(paused: bool) -> str:
@@ -227,20 +225,20 @@ def mill_svg(
         f'<g class="cm-spin"{spin}>{lifters}'
         f'<circle cx="{cx}" cy="{cy - r - 6}" r="4" fill="{PAPER}"/></g>'
         + _lines(390, 44, [
-            ("Molino de bolas, en corte", 28, "t", INK),
-            (f"Ø {es(diameter_m)} m × {es(length_m)} m", 21, "", INK),
-            (f"Llenado de bolas: {es(100 * filling, 0)} %", 21, "", INK),
-            (f"Giro: {es(100 * speed_frac, 0)} % de la crítica", 21, "", INK),
-            (f"= {es(rpm)} rpm, una vuelta cada {es(period, 2)} s", 21, "", INK),
-            (f"Potencia en el piñón: {es(power_kw, 0)} kW", 23, "t", INK),
-            (f"Carga de bolas: {es(balls_t, 0)} t (Bond-Rowland)", 21, "", INK),
+            (t("svg.mill.title"), 28, "t", INK),
+            (t("svg.mill.dims", d=es(diameter_m), l=es(length_m)), 21, "", INK),
+            (t("svg.mill.fill", v=es(100 * filling, 0)), 21, "", INK),
+            (t("svg.mill.speed", v=es(100 * speed_frac, 0)), 21, "", INK),
+            (t("svg.mill.rpm", rpm=es(rpm), period=es(period, 2)), 21, "", INK),
+            (t("svg.mill.power", kw=es(power_kw, 0)), 23, "t", INK),
+            (t("svg.mill.balls", t=es(balls_t, 0)), 21, "", INK),
         ])
         + _lines(390, 362, [
-            ("Esquema, no a escala. Giro y área de la carga:", 16, "", STEEL),
-            ("del cálculo. Inclinación y caída: ilustrativas.", 16, "", STEEL),
+            (t("svg.mill.note1"), 16, "", STEEL),
+            (t("svg.mill.note2"), 16, "", STEEL),
         ])
     )  # fmt: skip
-    return _svg(820, 410, body, paused, "Esquema animado del molino de bolas en corte")
+    return _svg(820, 410, body, paused, t("svg.mill.label"))
 
 
 # ------------------------------------------------------------------ hidrociclón
@@ -261,23 +259,23 @@ def cyclone_svg(feed: Stream, under: Stream, over: Stream, paused: bool = False)
         + f'<rect x="195" y="40" width="30" height="60" fill="none" stroke="{STEEL}" '
         f'stroke-width="4"/>'
         + _lines(390, 44, [
-            ("Hidrociclón", 28, "t", INK),
-            (f"Entra: {es(feed.total_solids)} t/h de sólidos", 21, "", INK),
-            (f"al {es(feed.pct_solids, 0)} % de sólidos", 21, "", INK),
-            (f"Rebalse: {es(over.total_solids)} t/h · P80 {es(over.p80, 0)} µm", 21, "",
+            (t("svg.cyc.title"), 28, "t", INK),
+            (t("svg.cyc.feed", v=es(feed.total_solids)), 21, "", INK),
+            (t("svg.cyc.pct", v=es(feed.pct_solids, 0)), 21, "", INK),
+            (t("svg.cyc.over", t=es(over.total_solids), p=es(over.p80, 0)), 21, "",
              STREAM_COLORS["overflow"]),
-            (f"Descarga: {es(under.total_solids)} t/h · P80 {es(under.p80, 0)} µm", 21, "",
+            (t("svg.cyc.under", t=es(under.total_solids), p=es(under.p80, 0)), 21, "",
              STREAM_COLORS["underflow"]),
-            ("Los gruesos bajan por la pared y", 19, "", INK),
-            ("salen por el ápice; los finos suben", 19, "", INK),
-            ("por el centro y salen por el rebalse.", 19, "", INK),
+            (t("svg.cyc.l1"), 19, "", INK),
+            (t("svg.cyc.l2"), 19, "", INK),
+            (t("svg.cyc.l3"), 19, "", INK),
         ])
         + _lines(390, 362, [
-            ("Esquema, no a escala. Grosor y velocidad", 16, "", STEEL),
-            ("de las corrientes: t/h. Remolino: ilustrativo.", 16, "", STEEL),
+            (t("svg.cyc.note1"), 16, "", STEEL),
+            (t("svg.cyc.note2"), 16, "", STEEL),
         ])
     )  # fmt: skip
-    return _svg(820, 410, body, paused, "Esquema animado del hidrociclón")
+    return _svg(820, 410, body, paused, t("svg.cyc.label"))
 
 
 # ------------------------------------------------------------------ diagrama de flujo
@@ -341,7 +339,7 @@ def flowsheet_svg(kind: str, streams: dict[str, Stream], mill_period_s: float,
         f'<rect x="{x0}" y="{y0}" width="{x1 - x0}" height="{y1 - y0}" rx="16" fill="#E4DED2" '
         f'stroke="{STEEL}" stroke-width="4"/>',
         f'<g clip-path="url(#cm-tambor)"><g{slide}>{stripes}</g></g>',
-        _text((x0 + x1) / 2, y1 + 22, "Molino de bolas", 14, "middle", "t"),
+        _text((x0 + x1) / 2, y1 + 22, t("svg.flow.mill"), 14, "middle", "t"),
     ]
     if kind != "abierto":
         sx0, sy0, sx1, sy1 = SUMP_BOX
@@ -350,9 +348,9 @@ def flowsheet_svg(kind: str, streams: dict[str, Stream], mill_period_s: float,
             f'fill="#E4DED2" stroke="{STEEL}" stroke-width="4"/>'
             f'<rect x="{sx0 + 4}" y="{sy0 + 32}" width="{sx1 - sx0 - 8}" height="{sy1 - sy0 - 36}" '
             f'fill="{WATER}" fill-opacity=".35"/>',
-            _text((sx0 + sx1) / 2, sy1 + 20, "Cajón y bomba", 14, "middle", "t"),
+            _text((sx0 + sx1) / 2, sy1 + 20, t("svg.flow.sump"), 14, "middle", "t"),
             f'<polygon points="{CYCLONE}" fill="#E4DED2" stroke="{STEEL}" stroke-width="4"/>',
-            _text(845, 170, "Hidrociclón", 14, "start", "t"),
+            _text(845, 170, t("svg.flow.cyclone"), 14, "start", "t"),
         ]
     for name, points in layout.items():
         parts.append(_stream(points, name, streams[name].total_solids, top, paused))
@@ -360,12 +358,19 @@ def flowsheet_svg(kind: str, streams: dict[str, Stream], mill_period_s: float,
     for name, (x, y, anchor) in labels.items():
         if name in layout:
             s, color = streams[name], STREAM_COLORS[name]
-            parts.append(_text(x, y, STREAM_NAMES[name], 13, anchor, "lbl", color))
-            parts.append(_text(x, y + 16, f"{es(s.total_solids)} t/h · P80 {es(s.p80, 0)} µm",
-                               12, anchor, "lbl", color))  # fmt: skip
-    note = (
-        "Grosor y velocidad de cada línea: sólidos que lleva (t/h). El tambor gira al ritmo real."
-    )
+            parts.append(_text(x, y, stream_name(name), 13, anchor, "lbl", color))
+            parts.append(
+                _text(
+                    x,
+                    y + 16,
+                    t("svg.flow.stream", t=es(s.total_solids), p=es(s.p80, 0)),
+                    12,
+                    anchor,
+                    "lbl",
+                    color,
+                )
+            )
+    note = t("svg.flow.note")
     height = 240 if kind == "abierto" else H  # el abierto no tiene la mitad de abajo
     parts.append(_text(20, height - 8, note, 11, color=STEEL))
-    return _svg(W, height, "".join(parts), paused, f"Diagrama de flujo animado: {kind}")
+    return _svg(W, height, "".join(parts), paused, t("svg.flow.label", kind=opt(kind)))

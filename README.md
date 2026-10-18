@@ -1,3 +1,5 @@
+[English version](README.en.md)
+
 # conminucion — grinding & classification circuit simulator
 
 Python simulator for ball-mill / hydrocyclone circuits, built from scratch from published equations (Whiten, Austin, Lynch-Rao, Kelsall, Bond).
@@ -6,9 +8,11 @@ Includes a modular flowsheet solver with recycles, plant-data reconciliation and
 [![CI](https://github.com/Laxionx/simulador-conminucion/actions/workflows/ci.yml/badge.svg)](https://github.com/Laxionx/simulador-conminucion/actions/workflows/ci.yml)
 [![Abrir en Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://simulador-conminucion-mtxoolyzuvvcxrq8rce3el.streamlit.app/)
 
+![El molino de bolas y el hidrociclón animados según su cálculo: el tambor gira a las rpm reales y la carga ocupa el llenado dado](docs/img/molino-ciclon.es.gif)
+
 **[Pruébalo en el navegador](https://simulador-conminucion-mtxoolyzuvvcxrq8rce3el.streamlit.app/),
 sin instalar nada.** Si nadie la usó en unos días, la app está dormida: el botón para despertarla
-tarda un minuto.
+tarda un minuto. La app tiene un selector Español / English arriba de la barra lateral; con `?lang=en` abre en inglés.
 
 ## Qué es
 
@@ -153,7 +157,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
                desgaste, chancadora, plitt, modsim
-app/           streamlit_app.py
+app/           streamlit_app.py (+ textos_es*.py y textos_en*.py: los textos de cada idioma)
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
                desgaste.md, chancado.md, plitt.md, img/
 tests/         pytest (cobertura >= 90 %)

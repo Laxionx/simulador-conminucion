@@ -9,7 +9,8 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from equipos import INK, PAPER, STEEL, STREAM_COLORS, STREAM_NAMES, es
+from equipos import INK, PAPER, STEEL, STREAM_COLORS, es, stream_name
+from i18n import t
 
 from conminucion.circuits import FRESH, CircuitConfig, CircuitResult
 from conminucion.stream import Stream
@@ -39,16 +40,16 @@ def _note(text: str) -> dict:
 
 
 def _player(fig: go.Figure, names: list[str], ms: int) -> go.Figure:
-    """Botones y deslizador en español. Arranca mostrando el estado final; «Reproducir» lo
-    recorre desde el principio. Nada arranca solo."""
+    """Botones y deslizador, en el idioma de la app. Arranca mostrando el estado final;
+    «Reproducir» lo recorre desde el principio. Nada arranca solo."""
     play = dict(frame=dict(duration=ms, redraw=True), fromcurrent=False, mode="immediate",
                 transition=dict(duration=0))  # fmt: skip
     pause = dict(frame=dict(duration=0, redraw=False), mode="immediate")
     fig.update_layout(
         updatemenus=[dict(
             type="buttons", direction="left", x=0.0, y=-0.27, xanchor="left", yanchor="top",
-            buttons=[dict(label="▶ Reproducir", method="animate", args=[None, play]),
-                     dict(label="⏸ Pausa", method="animate", args=[[None], pause])],
+            buttons=[dict(label=t("plot.play"), method="animate", args=[None, play]),
+                     dict(label=t("plot.pause"), method="animate", args=[[None], pause])],
         )],
         sliders=[dict(
             x=0.22, y=-0.24, len=0.78, active=len(names) - 1, currentvalue=dict(visible=False),
@@ -82,22 +83,22 @@ def convergence_figure(fresh_solids: float, histories: dict[str, list[float]]) -
             m = min(k, len(v))
             out.append(go.Scatter(
                 x=list(range(1, m + 1)), y=v[:m].tolist(), mode="lines+markers",
-                name=f"{label} ({len(v)} iteraciones)", marker=dict(size=4),
+                name=t("plot.conv.name", label=label, n=len(v)), marker=dict(size=4),
                 line=dict(color=colors.get(i, INK), width=2.5),
             ))  # fmt: skip
         return out
 
     def note(k: int) -> dict:
-        return _note(f"Iteración {k}: " + " · ".join(
+        return _note(t("plot.conv.note", k=k) + " · ".join(
             f"{label} {es(float(v[min(k, len(v)) - 1]), 3)}" for label, v in loads.items()
         ))  # fmt: skip
 
     frames = [go.Frame(data=traces(k), name=str(k), layout=note(k)) for k in its]
     fig = go.Figure(data=traces(its[-1]), frames=frames, layout=note(its[-1]))
     ymax = max(float(v.max()) for v in loads.values())
-    _layout(fig, "Cómo se llena el reciclo, iteración por iteración",
-            dict(title="Iteración", range=[0, n + 1]),
-            dict(title="Carga circulante (underflow / fresca)", range=[0, ymax * 1.08]),
+    _layout(fig, t("plot.conv.title"),
+            dict(title=t("plot.conv.x"), range=[0, n + 1]),
+            dict(title=t("plot.conv.y"), range=[0, ymax * 1.08]),
             frames=len(frames))  # fmt: skip
     return _player(fig, [str(k) for k in its], ms=60)
 
@@ -123,16 +124,16 @@ def journey(kind: str, res: CircuitResult, cfg: CircuitConfig) -> list[Stage]:
     profiles = cfg.mill.mixer_profiles(grid, s[mill_in].solids)
     n = len(profiles)
     mixers = [
-        Stage(f"Molino: mezclador {i + 1} de {n}" if n > 1 else "Molino", "descarga_molino",
-              _passing(grid, p))
+        Stage(t("plot.journey.mixer", i=i + 1, n=n) if n > 1 else t("plot.journey.mill"),
+              "descarga_molino", _passing(grid, p))
         for i, p in enumerate(profiles)
     ]  # fmt: skip
 
     def st_(name: str, label: str | None = None) -> Stage:
-        return Stage(label or STREAM_NAMES[name], name, 100.0 * s[name].cumulative_passing)
+        return Stage(label or stream_name(name), name, 100.0 * s[name].cumulative_passing)
 
     if kind == "abierto":
-        return [st_(FRESH), *mixers[:-1], st_("producto", "Producto (descarga del molino)")]
+        return [st_(FRESH), *mixers[:-1], st_("producto", t("plot.journey.product"))]
     if kind == "cerrado_directo":
         return [st_(FRESH), st_("alim_molino"), *mixers[:-1], st_("descarga_molino"),
                 st_("underflow"), st_("overflow")]  # fmt: skip
@@ -159,12 +160,15 @@ def journey_figure(stages: list[Stage], sieves: np.ndarray) -> go.Figure:
         return out
 
     names = [f"{i + 1}" for i in range(len(stages))]
-    notes = [_note(f"Etapa {i + 1} de {len(stages)}: {stg.label}") for i, stg in enumerate(stages)]
+    notes = [
+        _note(t("plot.journey.note", i=i + 1, n=len(stages), label=stg.label))
+        for i, stg in enumerate(stages)
+    ]
     frames = [go.Frame(data=traces(k), name=names[k], layout=notes[k]) for k in range(len(stages))]
     fig = go.Figure(data=traces(len(stages) - 1), frames=frames, layout=notes[-1])
-    _layout(fig, "El mineral a lo largo del circuito",
-            dict(title="Tamaño (µm)", type="log"),
-            dict(title="Pasante acumulado (%)", range=[0, 102]), frames=len(frames))  # fmt: skip
+    _layout(fig, t("plot.journey.title"),
+            dict(title=t("plot.size"), type="log"),
+            dict(title=t("plot.passing"), range=[0, 102]), frames=len(frames))  # fmt: skip
     return _player(fig, names, ms=900)
 
 
@@ -175,9 +179,9 @@ def passing_figure(streams: dict[str, Stream]) -> go.Figure:
         if s.total_solids > 0:
             fig.add_trace(go.Scatter(
                 x=s.grid.sieves.tolist(), y=(100 * s.cumulative_passing).tolist(),
-                mode="lines+markers", name=STREAM_NAMES.get(name, name), marker=dict(size=4),
+                mode="lines+markers", name=stream_name(name), marker=dict(size=4),
                 line=dict(color=STREAM_COLORS.get(name, INK), width=2.5,
                           dash="dot" if name in ("alim_molino", "alim_ciclon") else "solid"),
             ))  # fmt: skip
-    return _layout(fig, "Granulometría de cada corriente", dict(title="Tamaño (µm)", type="log"),
-                   dict(title="Pasante acumulado (%)", range=[0, 102]))  # fmt: skip
+    return _layout(fig, t("plot.streams.title"), dict(title=t("plot.size"), type="log"),
+                   dict(title=t("plot.passing"), range=[0, 102]))  # fmt: skip
