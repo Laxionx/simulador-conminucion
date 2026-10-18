@@ -4,6 +4,7 @@ T = {
     "page.title": "Comminution simulator",
     "app.title": "Grinding and classification circuit simulator",
     "app.caption": "Built from published equations (Whiten, Austin, Lynch-Rao, Bond). Start with the **Guide**; change the inputs in the sidebar.",
+    "err.generic": "Something went wrong. Try other inputs or reload the page.",
     "toggle.label": "Animate equipment",
     "toggle.help": 'Turns off the diagram animations. They also turn off on their own if the system has "reduce motion" enabled.',
     "tab.guide": "Guide",
