@@ -29,7 +29,7 @@ The reference industrial simulators (for example JKSimMet) are closed software. 
 | **Energy and the equipment inside** | **Fitting with a synthetic survey** |
 | ![Equipment](docs/img/app-equipment.en.png) | ![Fitting](docs/img/app-fitting.en.png) |
 
-In the app, the drum turns at the mill's real rpm (% of the critical speed), the ball charge takes up the given filling and each stream is drawn with the thickness and speed of its flow. With «reduce motion» enabled in the system, the diagrams are shown still.
+In the app, the drum turns at the mill's real rpm (% of the critical speed), the ball charge takes up the given filling and each stream is drawn with the thickness and speed of its flow. With "reduce motion" enabled in the system, the diagrams are shown still.
 
 ## How to run it
 

@@ -3,15 +3,9 @@
 T = {
     "page.title": "Comminution simulator",
     "app.title": "Grinding and classification circuit simulator",
-    "app.caption": (
-        "Built from published equations (Whiten, Austin, Lynch-Rao, Bond). Start with the "
-        "**Guide**; change the data in the sidebar."
-    ),
-    "toggle.label": "Animate the equipment",
-    "toggle.help": (
-        "Turns off the diagram animations. They also turn off by themselves if the system has "
-        "«reduce motion» enabled."
-    ),
+    "app.caption": "Built from published equations (Whiten, Austin, Lynch-Rao, Bond). Start with the **Guide**; change the inputs in the sidebar.",
+    "toggle.label": "Animate equipment",
+    "toggle.help": 'Turns off the diagram animations. They also turn off on their own if the system has "reduce motion" enabled.',
     "tab.guide": "Guide",
     "tab.sim": "Simulation",
     "tab.fit": "Fitting to data (synthetic survey)",
@@ -24,35 +18,22 @@ T = {
     "sim.h.energy": "#### Mill energy",
     "sim.h.equip": "#### The equipment inside",
     "sim.h.streams": "#### Streams",
-    "e.avail": "Energy the mill delivers (kWh/t)",
-    "e.avail.help": "Bond-Rowland power divided by the fresh t/h.",
-    "e.need": "Energy Bond asks for this P80 (kWh/t)",
+    "e.avail": "Energy delivered by the mill (kWh/t)",
+    "e.avail.help": "Bond-Rowland power divided by fresh t/h.",
+    "e.need": "Energy required by Bond for this P80 (kWh/t)",
     "e.need.help": "W = 10 Wi (1/√P80 − 1/√F80), without Rowland efficiency factors.",
-    "e.yes": "is enough",
-    "e.no": "is not enough",
-    "e.caption": (
-        "According to Bond, the mill **{verdict}** to grind down to this P80 ({ratio} times what "
-        "is asked). Rough check: the mill kinetics (τ, selection) do not depend on its power in "
-        "this model."
-    ),
-    "sim.alt.flow": "Flowsheet of the circuit",
+    "e.yes": "delivers enough",
+    "e.no": "does not deliver enough",
+    "e.caption": "By Bond's criterion, the mill **{verdict}** energy to grind to this P80 ({ratio} times what is required). Rough check: mill kinetics (τ, selection) do not depend on power in this model.",
+    "sim.alt.flow": "Circuit flowsheet",
     "sim.alt.mill": "Ball mill in section",
     "sim.alt.cyclone": "Hydrocyclone",
-    "sim.journey": (
-        "Press «Play»: each step adds a stage of the route, including the output of each mixer "
-        "of the mill."
-    ),
-    "sim.balance": (
-        "Balance: solids in {in_} / out {out} t/h (error {err}); water added {water} t/h."
-    ),
+    "sim.journey": 'Press "Play": each step adds a stage of the route, including the output of each mill mixer.',
+    "sim.balance": "Balance: solids in {in_} / out {out} t/h (error {err}); water added {water} t/h.",
     "sim.dl.streams": "Export streams (CSV)",
     "sim.dl.passing": "Export cumulative passing (CSV)",
-    "conv.noconv": "{method} does not converge in 500 iterations with these data.",
-    "conv.caption": (
-        "The recycle starts empty. Each iteration passes the ore through the mill and the "
-        "cyclone and returns more coarse particles, until what returns no longer changes: that "
-        "is the final circulating load."
-    ),
+    "conv.noconv": "{method} does not converge within 500 iterations with these inputs.",
+    "conv.caption": "The recycle starts empty. Each iteration passes the ore through the mill and cyclone and returns more coarse material, until what returns stops changing: that is the final circulating load.",
     "tcol.corriente": "stream",
     "tcol.solidos_t_h": "solids_t_h",
     "tcol.agua_t_h": "water_t_h",
@@ -66,11 +47,7 @@ T = {
     "tid.alim_ciclon": "cyclone_feed",
     "tid.overflow": "overflow",
     "tid.producto": "product",
-    "fit.intro": (
-        "**Synthetic** plant survey: data are generated with known parameters plus Gaussian "
-        "noise and the fit is checked to recover them within its 95 % CI (covariance of the "
-        "`least_squares` Jacobian)."
-    ),
+    "fit.intro": "**Synthetic** plant survey: data are generated with known parameters plus Gaussian noise, and the fit is checked to recover them within its 95 % CI (covariance of the `least_squares` Jacobian).",
     "fit.seed": "Seed",
     "fit.sigma": "Partition noise (absolute σ)",
     "fit.rel": "Relative noise of the size distributions",
@@ -82,15 +59,9 @@ T = {
     "fit.true": "true",
     "fit.xlabel": "Size (µm)",
     "fit.ylabel": "Partition to the underflow",
-    "fit.warn": "The direct closed circuit cannot be reconciled with these data: {exc}",
-    "fit.write": (
-        "Fraction of solids to the underflow: true {true_r}, reconciled {rec_r}. Circulating "
-        "load: true {true_cl}, reconciled {rec_cl} (weighted χ² {chi2})."
-    ),
-    "fit.cap": (
-        "The partition derived from reconciled data has heteroscedastic errors; its Jacobian "
-        "CIs may be optimistic (see the README)."
-    ),
+    "fit.warn": "The direct closed circuit cannot be reconciled with these inputs: {exc}",
+    "fit.write": "Fraction of solids to the underflow: true {true_r}, reconciled {rec_r}. Circulating load: true {true_cl}, reconciled {rec_cl} (weighted χ² {chi2}).",
+    "fit.cap": "The partition derived from reconciled data has heteroscedastic errors; its Jacobian-based CIs may be optimistic (see the README).",
     "ci.param": "parameter",
     "ci.true": "true",
     "ci.est": "estimated",
