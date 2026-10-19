@@ -46,3 +46,15 @@ def test_el_servidor_rechaza_valores_fuera_de_rango(value):
     at.sidebar.slider[0].set_value(value).run()  # número de tamices, 8 a 24
     assert not at.exception
     assert at.sidebar.slider[0].value == 17
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), 10_000_000, -5])
+def test_la_semilla_entera_no_cae_con_valores_manipulados(value):
+    # Un number_input ENTERO de Streamlit 1.65 lanza ValueError al recibir NaN o inf de un
+    # cliente manipulado. La semilla se pide como decimal sin decimales y se valida en el servidor.
+    at = AppTest.from_file(APP, default_timeout=120).run()
+    seed = next(w for w in at.number_input if w.label == "Semilla")
+    seed.set_value(value).run()
+    assert not at.exception
+    seed = next(w for w in at.number_input if w.label == "Semilla")
+    assert seed.value == 1

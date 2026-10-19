@@ -164,7 +164,9 @@ def ci_table(fit, truth) -> pd.DataFrame:
 def fitting_tab(cfg: CircuitConfig) -> None:
     st.markdown(t("fit.intro"))
     c1, c2, c3 = st.columns(3)
-    seed = int(c1.number_input(t("fit.seed"), 0, 10_000, 1))
+    # Decimal y no entero: un number_input entero de Streamlit 1.65 se cae si un cliente manipulado
+    # manda NaN o inf; el decimal vuelve al valor por defecto en el servidor.
+    seed = int(c1.number_input(t("fit.seed"), 0.0, 10_000.0, 1.0, 1.0, format="%.0f"))
     sigma = c2.number_input(t("fit.sigma"), 0.001, 0.1, 0.02, 0.005)
     rel = c3.number_input(t("fit.rel"), 0.0, 0.2, 0.05, 0.01)
     grid = cfg.fresh.grid
