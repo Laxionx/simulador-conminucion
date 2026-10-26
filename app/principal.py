@@ -24,7 +24,13 @@ from animaciones import (  # noqa: E402
     passing_figure,
 )
 from bond_tab import bond_tab  # noqa: E402
-from controles import KNOT_RD, KNOT_SIZES, MillGeometry, sidebar_config  # noqa: E402
+from controles import (  # noqa: E402
+    KNOT_RD,
+    KNOT_SIZES,
+    MillGeometry,
+    reset_to_example,
+    sidebar_config,
+)
 from equipos import (  # noqa: E402
     MOTION_CSS,
     as_images,
@@ -35,8 +41,16 @@ from equipos import (  # noqa: E402
     rotation_period_s,
     stream_name,
 )
+from estado import panel, pruebas  # noqa: E402
 from guia import guide_tab  # noqa: E402
 from i18n import activate, current, sidebar_selector, t, tr_error  # noqa: E402
+from mandibula_tab import mandibula_tab  # noqa: E402
+from sim_estado import (  # noqa: E402
+    disponible_kwh_t,
+    filas_estado,
+    potencia_molino,
+    pruebas_sim,
+)
 from tablas import passing_table, stream_table  # noqa: E402
 
 from conminucion.circuits import FRESH, CircuitConfig, CircuitResult, simulate  # noqa: E402
@@ -44,7 +58,7 @@ from conminucion.classifier import EfficiencyCurve  # noqa: E402
 from conminucion.fitting import fit_cyclone_partition, fit_mill_knots  # noqa: E402
 from conminucion.flowsheet import ConvergenceError  # noqa: E402
 from conminucion.mill import BallMill, KnotSelection  # noqa: E402
-from conminucion.power import bond_mill_power  # noqa: E402
+from conminucion.power import BallMillPower  # noqa: E402
 from conminucion.reconcile import reconcile_node  # noqa: E402
 from conminucion.synthetic import (  # noqa: E402
     synthetic_cyclone_survey,
@@ -75,11 +89,9 @@ def _metrics(res: CircuitResult) -> None:
     c4.metric(t("m.iter"), res.solution.iterations)
 
 
-def _energy(res: CircuitResult, geom: MillGeometry) -> tuple[float, float]:
+def _energy(res: CircuitResult, power: BallMillPower) -> tuple[float, float]:
     """(kW en el piñón, toneladas de bolas) y la comparación con Bond."""
-    power = bond_mill_power(geom.diameter_m, geom.length_m, geom.filling, geom.speed,
-                            geom.top_ball_mm)  # fmt: skip
-    available = power.kw / res.streams[FRESH].total_solids
+    available = disponible_kwh_t(res, power)
     need = res.bond_kwh_t
     c1, c2 = st.columns(2)
     c1.metric(t("e.avail"), es(available, 2), help=t("e.avail.help"))
@@ -106,10 +118,13 @@ def _convergence(kind: str, cfg: CircuitConfig, res: CircuitResult, wegstein: bo
 def simulation_tab(kind: str, cfg: CircuitConfig, wegstein: bool, geom: MillGeometry,
                    res: CircuitResult, flowsheet: str, animate: bool) -> None:  # fmt: skip
     s = res.streams
+    power = potencia_molino(geom)
+    st.markdown(t("sim.h.estado"))
+    panel(filas_estado(kind, res, power, wegstein))
     _metrics(res)
     st.html(flowsheet)
     st.markdown(t("sim.h.energy"))
-    kw, balls = _energy(res, geom)
+    kw, balls = _energy(res, power)
     st.markdown(t("sim.h.equip"))
     left, right = st.columns(2)
     args = (geom.diameter_m, geom.length_m, geom.filling, geom.speed, geom.top_ball_mm, kw, balls)
@@ -142,6 +157,9 @@ def simulation_tab(kind: str, cfg: CircuitConfig, wegstein: bool, geom: MillGeom
     d2.download_button(
         t("sim.dl.passing"), passing_table(res.passing_table()).to_csv(index=False), "pasantes.csv"
     )
+    st.markdown(t("sim.h.prueba"))
+    st.markdown(t("sim.prueba.intro"))
+    pruebas(pruebas_sim(), "sim_", reset_to_example)
 
 
 def ci_table(fit, truth) -> pd.DataFrame:
@@ -226,8 +244,8 @@ def main() -> None:
         still = flowsheet_svg(kind, res.streams, period, True)
         moving = flowsheet_svg(kind, res.streams, period, not animate)
         sheets = {tag: as_images(moving, still, t("sim.alt.flow")) for tag in sheets}
-    tab_guide, tab_sim, tab_fit, tab_bond = st.tabs(
-        [t("tab.guide"), t("tab.sim"), t("tab.fit"), t("tab.bond")]
+    tab_guide, tab_sim, tab_fit, tab_bond, tab_jaw = st.tabs(
+        [t("tab.guide"), t("tab.sim"), t("tab.fit"), t("tab.bond"), t("tab.jaw")]
     )
     with tab_guide:
         guide_tab(kind, sheets["guia"])
@@ -240,6 +258,8 @@ def main() -> None:
         fitting_tab(cfg)
     with tab_bond:
         bond_tab(animate)
+    with tab_jaw:
+        mandibula_tab(animate)
 
 
 main()

@@ -6,11 +6,12 @@ from __future__ import annotations
 from textos_en_bond import T as BOND
 from textos_en_datos import T as DATOS
 from textos_en_guia import T as GUIA
+from textos_en_mandibula import T as MANDIBULA
 from textos_en_svg import T as SVG
 from textos_en_ui import T as UI
 
 TEXTS: dict[str, str] = {}
-for _part in (UI, GUIA, DATOS, SVG, BOND):
+for _part in (UI, GUIA, DATOS, SVG, BOND, MANDIBULA):
     _repeated = TEXTS.keys() & _part.keys()
     if _repeated:
         raise ValueError(f"claves repetidas en textos_en: {sorted(_repeated)}")

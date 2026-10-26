@@ -198,6 +198,28 @@ def reset_to_example() -> None:
         del st.session_state[k]
 
 
+def build_config(v: dict[str, float], dist: str, param: str) -> tuple[CircuitConfig, MillGeometry]:
+    """El circuito y la geometría del molino a partir de los valores de los datos (`v`, con las
+    claves de `DATOS`), la distribución de la alimentación y la parametrización del molino. La
+    barra lateral y los experimentos de «Prueba esto» arman el circuito con esta misma función."""
+    grid = SizeGrid.geometric(v["top"], int(v["n"]))
+    if dist == DISTRIBUTIONS[0]:
+        fractions = rosin_rammler(grid, v["x63"], v["m"])
+    else:
+        fractions = gaudin_schuhmann(grid, v["k"], v["a"])
+    fresh = Stream.from_fractions(grid, fractions, v["tph"], v["water"], v["rho"])
+    if param == SELECTIONS[0]:
+        sel = AustinSelection(v["A"], v["alpha_s"], v["mu"], v["lam"], v["tau"])
+    else:
+        sel = KnotSelection(KNOT_SIZES, tuple(v[f"rd{i}"] for i in range(len(KNOT_SIZES))))
+    frac = Fracture(v["phi"], v["gamma"], v["beta"])
+    mill = BallMill(sel, frac, int(v["mixers"]), v["mill_water"])
+    geometry = MillGeometry(v["diameter"], v["length"], v["filling"] / 100.0,
+                            v["speed"] / 100.0, v["top_ball"])  # fmt: skip
+    cls = EfficiencyCurve(v["d50c"], v["alpha_c"], v["rf"])
+    return CircuitConfig(fresh, mill, cls, float(v["pct"]), v["wi"]), geometry
+
+
 def sidebar_config() -> tuple[str, CircuitConfig, bool, MillGeometry]:
     """Lee la barra lateral y arma el circuito y la geometría del molino."""
     sb = st.sidebar
@@ -219,12 +241,6 @@ def sidebar_config() -> tuple[str, CircuitConfig, bool, MillGeometry]:
     for d in DATOS:
         if d.when == dist:
             v[d.key] = _ask(d)
-    grid = SizeGrid.geometric(v["top"], int(v["n"]))
-    if dist == DISTRIBUTIONS[0]:
-        fractions = rosin_rammler(grid, v["x63"], v["m"])
-    else:
-        fractions = gaudin_schuhmann(grid, v["k"], v["a"])
-    fresh = Stream.from_fractions(grid, fractions, v["tph"], v["water"], v["rho"])
 
     sb.subheader(t("group." + CIN))
     plabels = param_labels()
@@ -234,28 +250,21 @@ def sidebar_config() -> tuple[str, CircuitConfig, bool, MillGeometry]:
     for d in DATOS:
         if d.when == param or (d.group == CIN and not d.when):
             v[d.key] = _ask(d)
-    if param == SELECTIONS[0]:
-        sel = AustinSelection(v["A"], v["alpha_s"], v["mu"], v["lam"], v["tau"])
-    else:
-        sel = KnotSelection(KNOT_SIZES, tuple(v[f"rd{i}"] for i in range(len(KNOT_SIZES))))
-    frac = Fracture(v["phi"], v["gamma"], v["beta"])
-    mill = BallMill(sel, frac, int(v["mixers"]), v["mill_water"])
 
     sb.subheader(t("group." + POT))
     for key in ("diameter", "length", "filling", "speed", "top_ball"):
         v[key] = _ask(BY_KEY[key])
-    geometry = MillGeometry(v["diameter"], v["length"], v["filling"] / 100.0,
-                            v["speed"] / 100.0, v["top_ball"])  # fmt: skip
 
     sb.subheader(t("group." + CIC))
-    cls = EfficiencyCurve(_ask(BY_KEY["d50c"]), _ask(BY_KEY["alpha_c"]), _ask(BY_KEY["rf"]))
-    pct = _ask(BY_KEY["pct"])
+    for key in ("d50c", "alpha_c", "rf", "pct"):
+        v[key] = _ask(BY_KEY[key])
     sb.subheader(t("group." + ENE))
-    wi = _ask(BY_KEY["wi"])
+    v["wi"] = _ask(BY_KEY["wi"])
     wegstein = sb.checkbox(
         t("sidebar.wegstein"), value=True, key=PREFIX + "wegstein", help=t("sidebar.wegstein.help")
     )
-    return kind, CircuitConfig(fresh, mill, cls, float(pct), wi), wegstein, geometry
+    cfg, geometry = build_config(v, dist, param)
+    return kind, cfg, wegstein, geometry
 
 
 def data_table() -> pd.DataFrame:

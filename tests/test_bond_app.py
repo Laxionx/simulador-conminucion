@@ -53,10 +53,10 @@ def number_input(at: AppTest, key: str):
 def test_humo_de_la_pestana_en_cada_idioma(lang, tab, wi, gbp):
     at = run(lang)
     assert not at.exception and not at.error
-    assert [t.label for t in at.tabs][-1] == tab
+    assert [t.label for t in at.tabs][3] == tab  # la 5.ª es «Chancado primario»
     calc = md(at, "Gbp**" if lang == "en" else "Gbp final**")
     assert f"Wi = {wi} kWh/t" in calc and gbp in calc
-    assert len(at.metric) == 6  # la pestaña no agrega métricas a las de siempre
+    assert len(at.metric) == 12  # la pestaña no agrega métricas: 6 de simulación y 6 de chancado
     n_cycles = max(len(d.value) for d in at.dataframe)
     assert n_cycles == 11  # la tabla calculada tiene un renglón por ciclo
 

@@ -89,6 +89,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Fitting of d50c, α and Rf (cyclone) and of r/d by knots (mill), CI by covariance of the Jacobian.
 - Synthetic plant survey that checks the recovery of parameters within their CI.
 - Streamlit app with a guide (what it simulates, equations, what data it needs and how each one is measured in a plant), the flowsheet and the equipment animated with data from the calculation, the convergence of the recycle and the size distribution stage by stage, mill power (Bond-Rowland), passing curves, stream table and CSV.
+- "Primary crushing" tab of the app: grizzly + jaw crusher with indicators, an "Operating state" panel (each check with its level written out and its source), the animated diagram drawn to scale, the 12 machines of King's Table 3.1, capacity and size distribution curves, mass balance and "Try this" (experiments with numbers computed live). The Simulation tab has the same panel and its own "Try this".
 
 ## Virtual Bond test
 

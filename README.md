@@ -112,6 +112,11 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   uno en planta), el diagrama de flujo y los equipos animados con datos del cálculo, la
   convergencia del reciclo y la granulometría etapa por etapa, potencia del molino
   (Bond-Rowland), curvas de pasante, tabla de corrientes y CSV.
+- Pestaña «Chancado primario» de la app: parrilla + chancador de mandíbula con indicadores, un
+  panel «Estado de la operación» (cada chequeo con su nivel escrito y su fuente), el esquema
+  animado a escala, los 12 equipos de la Tabla 3.1 de King, curvas de capacidad y granulometría,
+  balance de masa y «Prueba esto» (experimentos con números calculados en vivo). La pestaña
+  Simulación tiene el mismo panel y su propio «Prueba esto».
 
 ## Ensayo de Bond virtual
 

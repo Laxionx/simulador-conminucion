@@ -81,6 +81,8 @@ Para comprobar que las pruebas pueden fallar, se metieron 5 errores a propósito
 
 Código: `conminucion/mandibula.py` (`JawCrusher`, `Grizzly`), `mandibula_producto.py` (curva de Nordberg y producto de la referencia R), `mandibula_diagnostico.py` y `datos_mandibula.py` (Tabla 3.1 de King, constantes y fuentes). Pruebas: `tests/test_mandibula.py` y `tests/test_mandibula_validacion.py`. `CrusherOp` acepta tanto el cono como la mandíbula.
 
+App: la pestaña «Chancado primario» (`app/mandibula_tab.py`) usa estas clases; el factor de densidad aparente efectiva por defecto es `K_CAL` = 1,815 t/m³ (ajuste global contra la Tabla 3.1, que pasa fuera de muestra con 17,2 % de mediana de |error|) y el producto por defecto, la curva de Nordberg.
+
 **Geometría** (G boca, W ancho, D altura de la cámara = 2G, L_T carrera, CSS_e = CSS + desgaste, OSS = CSS_e + L_T). La carrera por defecto sigue AMIT 135: L_T = 0,0502·G^0,85 (G y L_T en metros).
 
 **Cinemática** (misma estructura que la referencia R):

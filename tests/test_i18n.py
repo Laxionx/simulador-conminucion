@@ -89,6 +89,10 @@ def test_ningun_texto_esta_vacio_y_solo_los_cognados_son_iguales_en_los_dos_idio
         "method.wegstein", "opt.Austin (S, τ)", "out.5.name", "step.1.latex", "step.2.latex",
         "step.3.latex", "step.4.latex", "step.5.latex", "svg.flow.stream", "svg.mill.dims",
         "tcol.P80_um", "tid.overflow", "tid.underflow",
+        # chancado primario: símbolos, siglas y fórmulas iguales en los dos idiomas
+        "jaw.m.nnc", "jaw.svg.css", "jaw.svg.oss", "jaw.svg.theta", "jaw.plot.css",
+        "jaw.plot.oss", "jaw.plot.cap.nc", "jaw.plot.cap.taggart", "jaw.plot.cap.x.css",
+        "jaw.eje.rpm", "jaw.eje.css", "jaw.bal.p80", "jaw.bal.p50", "jaw.guia.eq2",
     }  # fmt: skip
 
 
@@ -172,7 +176,7 @@ def test_parse_lang_solo_acepta_es_y_en():
 def test_lang_en_en_la_url_abre_en_ingles_y_el_selector_cambia_el_idioma():
     en = run("en")
     assert [t.label for t in en.tabs] == [
-        "Guide", "Simulation", "Fitting to data (synthetic survey)", "Bond test"
+        "Guide", "Simulation", "Fitting to data (synthetic survey)", "Bond test", "Primary crushing"
     ]  # fmt: skip
     assert en.sidebar.radio[0].value == "en"
     en.sidebar.radio[0].set_value("es").run()
@@ -208,7 +212,7 @@ def test_los_datos_y_las_listas_se_conservan_al_cambiar_de_idioma():
 def test_humo_de_todas_las_pestanas(lang, kind):
     at = run(lang, kind=kind)
     assert not at.exception and not at.error
-    assert len(at.tabs) == 4 and len(at.metric) == 6
+    assert len(at.tabs) == 5 and len(at.metric) == 12
     assert at.sidebar.selectbox[0].value == i18n_opt(lang, kind)
 
 
@@ -261,7 +265,7 @@ def test_las_cifras_son_identicas_en_los_dos_idiomas(values):
     assert not es_.exception and not en.exception
     a, b = _figures(es_, "es"), _figures(en, "en")
     assert len(a) == len(b) > 20 and a == b
-    assert len(es_.metric) == len(en.metric) == 6
+    assert len(es_.metric) == len(en.metric) == 12
 
 
 def _bond_numbers(at: AppTest, lang: str) -> list[list[float]]:
