@@ -30,20 +30,18 @@ from equipos import (
 from i18n import t
 from mandibula_datos import Calculo
 from mandibula_rocas import (
-    CLASS_COLORS,
     CLASS_KEYS,
     FINOS,
     PRODUCTO,
     ROCAS,
+    Roca,
     dibujar,
+    dibujar_marcas,
     forma,
     fracciones_clases,
+    marcas_de_correa,
     rocas_de_camara,
-    rocas_de_correa,
-    sin_encimar,
 )
-
-from conminucion.mandibula import pasante_en
 
 W, H = 900, 650
 MAX_H_PX, MAX_W_PX = 300.0, 200.0  # espacio de la cámara en el dibujo
@@ -53,6 +51,7 @@ VIEW_FULL, VIEW_DETAIL = "completo", "detalle"
 VIEWS = (VIEW_FULL, VIEW_DETAIL)
 AMP_RANGE, SPEED_RANGE = (1.0, 8.0), (5, 100)
 IDS = ("jw-boca", "jw-altura", "jw-css", "jw-oss")
+ARCO_R = 34.0  # radio del arco del ángulo de mordida; la θ va a ARCO_R + 10
 SOLO = "#8A3B12"  # color de la nota «solo cambia el dibujo»
 
 
@@ -66,6 +65,7 @@ class Geometria:
     yb: float
     xm: float  # boca arriba (x de la mandíbula móvil, cerrada)
     xc: float  # abertura de abajo, cerrada
+    apex_y: float  # donde se cortan las dos caras de la cámara
     phi_deg: float  # giro de la mandíbula móvil hacia abierto (carrera × amplificación)
     pivot: tuple[float, float]
 
@@ -96,7 +96,8 @@ def geometria(c: Calculo, amp: float) -> Geometria:
     xt = xm + (xm - xc) * JAW_EXT / (yb - Y0)
     pivot = (xt + JAW_W / 2.0, yt + 12.0)
     phi = _giro_deg(pivot, (xc, yb), amp * j.stroke * s)
-    return Geometria(s, XF, Y0, yb, xm, xc, phi, pivot)
+    apex = yb + j.css_eff_mm * j.height / (j.gape_mm - j.css_eff_mm) * s
+    return Geometria(s, XF, Y0, yb, xm, xc, apex, phi, pivot)
 
 
 # ------------------------------------------------------------------ piezas
@@ -165,7 +166,7 @@ def _punto_girado(
 def _vista(g: Geometria, view: str) -> tuple[float, float, float, float]:
     if view == VIEW_FULL:
         return 0.0, 0.0, float(W), float(H)
-    return g.xc - 150.0, g.yb - 160.0, 490.0, 340.0  # el detalle incluye una franja de leyenda
+    return g.xc - 150.0, g.yb - 160.0, 490.0, 372.0  # el detalle incluye una franja de leyenda
 
 
 def jaw_svg(c: Calculo, amp: float, speed_pct: float, view: str = VIEW_FULL,
@@ -232,18 +233,18 @@ def jaw_svg(c: Calculo, amp: float, speed_pct: float, view: str = VIEW_FULL,
         f'<circle cx="{px:.1f}" cy="{py:.1f}" r="6" fill="{INK}"/>',
     ]
     body += _parrilla_y_flujos(c, g, paused)
-    body.append(dibujar(rocas_de_camara(c, g.xf, g.yb, g.s), "rock"))
+    body.append(dibujar(rocas_de_camara(c, g.xf, g.yb, g.s, reservadas(c, g)), "rock"))
     body += _rocas_correa(c, g)
     body.append(_cotas(c, g))
     body.append(_textos(c, g, amp, speed_pct, period, wall, qy_t, qy_r, view == VIEW_FULL))
     x, y, w, h = _vista(g, view)
     if view == VIEW_DETAIL:  # una franja propia, tapa la parte baja, con la leyenda y la nota
-        sy = g.yb + 92.0
+        sy = g.yb + 92.0  # la franja tapa lo que hay bajo la descarga
         body.append(
             f'<rect x="{x:.1f}" y="{sy:.1f}" width="{w:.1f}" height="{y + h - sy:.1f}" '
             f'fill="{PAPER}"/>'
         )
-        body.append(_leyenda(c, x + 14.0, sy + 16.0, cols=2, ancho=205.0, size=12))
+        body.append(_leyenda(c, x + 14.0, sy + 16.0, horizontal=True, ancho=235.0))
         solo = t("jaw.svg.solo", a=es(amp, 0), v=es(speed_pct, 0)) + " " + t("jaw.svg.solo2")
         body.append(_text(x + 14.0, y + h - 10.0, solo, 11, "start", "lbl", SOLO))
     css = _css(paused)
@@ -256,14 +257,19 @@ def jaw_svg(c: Calculo, amp: float, speed_pct: float, view: str = VIEW_FULL,
 
 
 def _rocas_correa(c: Calculo, g: Geometria) -> list[str]:
-    """Sobre la correa: los finos de la parrilla (aguas arriba) y el producto del chancador."""
+    """Sobre la correa, TODAS las marcas: los finos de la parrilla (aguas arriba) y el producto del
+    chancador (bajo la descarga), en filas ordenadas, sin escala ni descarte."""
     xg, mid = g.xf - 140.0, g.xf + (g.xc - g.xf) / 2.0
     fin = []
     if c.pasante is not None:
-        fin = rocas_de_correa(c, c.pasante, FINOS, xg - 45.0, xg + 45.0, Y_CORREA, g.s)
-    prod = rocas_de_correa(c, c.prod_chancador, PRODUCTO, mid - 110.0, mid + 110.0, Y_CORREA, g.s)
-    prod = sin_encimar(prod, fin)
-    return [dibujar(fin, "fin"), dibujar(prod, "prod")]
+        fin = marcas_de_correa(c, c.pasante, FINOS, xg - 62.0, Y_CORREA)
+    prod = marcas_de_correa(c, c.prod_chancador, PRODUCTO, mid + 14.0, Y_CORREA)
+    return [dibujar_marcas(fin, "fin"), dibujar_marcas(prod, "prod")]
+
+
+def reservadas(c: Calculo, g: Geometria) -> tuple[Roca, ...]:
+    """La caja del arco y de la θ: ninguna roca de la cámara se dibuja encima."""
+    return (Roca(0.0, 0, g.xf, g.apex_y - ARCO_R * 0.95, ARCO_R * 0.95),)
 
 
 def _parrilla(c: Calculo, g: Geometria, xg: float, top: float, paused: bool) -> list[str]:
@@ -356,14 +362,13 @@ def _guia(x1: float, y1: float, x2: float, y2: float) -> str:
 def _cotas(c: Calculo, g: Geometria) -> str:
     j = c.jaw
     oss = g.xf + (j.css_eff_mm + j.stroke) * g.s
-    r = 90.0
+    r = ARCO_R
     ang = math.atan2(g.xc - g.xm, g.yb - g.y0)  # inclinación de la cara móvil
-    apex_y = g.yb + j.css_eff_mm * j.height / (j.gape_mm - j.css_eff_mm) * g.s
-    ax, ay = g.xf, apex_y
+    ax, ay = g.xf, g.apex_y
     p1, p2 = (ax, ay - r), (ax - r * math.sin(ang), ay - r * math.cos(ang))
     arc = f"M {p1[0]:.1f} {p1[1]:.1f} A {r} {r} 0 0 0 {p2[0]:.1f} {p2[1]:.1f}"
     xl = g.xf + 64.0  # los rótulos de CSS y OSS van a un lado, con su línea guía
-    tx, ty = ax - (r + 12) * math.sin(ang / 2), ay - (r + 12) * math.cos(ang / 2)
+    tx, ty = ax - (r + 10) * math.sin(ang / 2), ay - (r + 10) * math.cos(ang / 2)
     return (
         _dim(g.xf, g.y0 - 8, g.xm, g.y0 - 8, IDS[0])
         + _dim(g.xf - 96, g.y0, g.xf - 96, g.yb, IDS[1])
@@ -387,21 +392,26 @@ def _cotas(c: Calculo, g: Geometria) -> str:
     )
 
 
-def _leyenda(c: Calculo, x: float, y: float, cols: int = 1, ancho: float = 0.0,
-             size: int = 13) -> str:  # fmt: skip
-    """La ÚNICA leyenda: forma, color y % de la masa de cada clase (del modelo) y del producto."""
-    frac = fracciones_clases(c)
-    pct = pasante_en(c.prod_chancador, c.jaw.oss_mm * 1000.0)
-    out = []
+def _bloque(c: Calculo, s, titulo: str, x: float, y: float, size: int, paso: float) -> str:
+    """Un bloque de la leyenda: título y una línea por clase (forma y color en la marca; el texto,
+    en tinta, para que se lea sobre el fondo) con el % de la masa de esa corriente."""
+    frac = fracciones_clases(c, s)
+    out = [_text(x, y, t(titulo), size, "start", "t", INK)]
     for i, k in enumerate(CLASS_KEYS):
-        cx, cy = x + (i % cols) * ancho, y + (i // cols) * (size + 8.0)
-        out.append(forma(i, cx + 6.0, cy - 4.0, 6.0, 0, "leg", 0.0))
-        color = "#8A5A00" if i == 1 else CLASS_COLORS[i]
-        out.append(_text(cx + 20.0, cy, t(f"jaw.svg.leg.{k}", p=es(100 * frac[i], 1)), size,
-                         "start", "", color))  # fmt: skip
-    fila = y + ((len(CLASS_KEYS) + cols - 1) // cols) * (size + 8.0)
-    out.append(_text(x, fila, t("jaw.svg.prod", p=es(100 * pct, 0)), size, "start", "", INK))
+        cy = y + (i + 1) * paso
+        out.append(forma(i, x + 6.0, cy - 4.0, 6.0, 0, "leg", 0.0, marca=True))
+        out.append(_text(x + 20.0, cy, t(f"jaw.svg.leg.{k}", p=es(100 * frac[i], 1)), size,
+                         "start", "", INK))  # fmt: skip
     return "".join(out)
+
+
+def _leyenda(c: Calculo, x: float, y: float, horizontal: bool = False, ancho: float = 0.0,
+             size: int = 12, paso: float = 17.0) -> str:  # fmt: skip
+    """La ÚNICA leyenda, en dos bloques: la alimentación a la cámara y el producto en la correa."""
+    x2, y2 = (x + ancho, y) if horizontal else (x, y + 5 * paso + 8.0)
+    return _bloque(c, c.carga, "jaw.svg.leg.camara", x, y, size, paso) + _bloque(
+        c, c.prod_chancador, "jaw.svg.leg.correa", x2, y2, size, paso
+    )
 
 
 def _textos(c: Calculo, g: Geometria, amp: float, speed_pct: float, period: float,
@@ -428,18 +438,18 @@ def _textos(c: Calculo, g: Geometria, amp: float, speed_pct: float, period: floa
     bloque = ""
     if info:  # el bloque de información y la leyenda solo van en el corte completo
         bloque = _lines(650, 40, [
-            (t("jaw.svg.title"), 19, "t", INK),
-            (t("jaw.svg.dims", g=es(j.gape_mm, 0), w=es(j.width_mm, 0)), 15, "", INK),
-            (t("jaw.svg.rpm", rpm=es(j.rpm, 0), p=es(60.0 / j.rpm, 3)), 15, "", INK),
-            (t("jaw.svg.view", p=es(period, 2), v=es(speed_pct, 0)), 15, "", INK),
-            (t("jaw.svg.stroke", l=es(j.stroke, 1), a=es(amp, 0)), 15, "", INK),
-            (t("jaw.svg.theta", v=es(j.bite_angle_deg, 1)), 15, "", INK),
+            (t("jaw.svg.title"), 18, "t", INK),
+            (t("jaw.svg.dims", g=es(j.gape_mm, 0), w=es(j.width_mm, 0)), 14, "", INK),
+            (t("jaw.svg.rpm", rpm=es(j.rpm, 0), p=es(60.0 / j.rpm, 3)), 14, "", INK),
+            (t("jaw.svg.view", p=es(period, 2), v=es(speed_pct, 0)), 14, "", INK),
+            (t("jaw.svg.stroke", l=es(j.stroke, 1), a=es(amp, 0)), 14, "", INK),
+            (t("jaw.svg.theta", v=es(j.bite_angle_deg, 1)), 14, "", INK),
             (t("jaw.svg.solo", a=es(amp, 0), v=es(speed_pct, 0)), 12, "", SOLO),
             (t("jaw.svg.solo2"), 12, "", SOLO),
         ])  # fmt: skip
-        n = len(rocas_de_camara(c, g.xf, g.yb, g.s))
+        n = len(rocas_de_camara(c, g.xf, g.yb, g.s, reservadas(c, g)))
         fin = FINOS if c.pasante is not None else 0
-        bloque += _leyenda(c, 650.0, 262.0)
+        bloque += _leyenda(c, 706.0, 236.0)
         bloque += _lines(650, 535, [
             (t("jaw.svg.note1", n=n, m=ROCAS), 12, "", STEEL),
             (t("jaw.svg.note2"), 12, "", STEEL),

@@ -20,9 +20,7 @@ import i18n  # noqa: E402
 import mandibula_datos as md  # noqa: E402
 import mandibula_rocas as mr  # noqa: E402
 import mandibula_svg as ms  # noqa: E402
-from equipos import as_images, es  # noqa: E402
-
-from conminucion.mandibula import pasante_en  # noqa: E402
+from equipos import INK, PAPER, as_images, es  # noqa: E402
 
 NS = "{http://www.w3.org/2000/svg}"
 SPANISH = re.compile(
@@ -232,7 +230,7 @@ def test_las_rocas_no_se_encriman_y_son_cuantiles_de_la_carga(nombre):
 def test_cada_roca_esta_a_la_altura_de_la_regla_de_la_abertura(nombre):
     c = md.calcular({**md.valores_por_defecto(), **CASOS[nombre]})
     j, g = c.jaw, ms.geometria(c, 3.0)
-    rocas = mr.rocas_de_camara(c, g.xf, g.yb, g.s)
+    rocas = mr.rocas_de_camara(c, g.xf, g.yb, g.s, ms.reservadas(c, g))
     for r in rocas:
         assert r.clase == mr.clase_de(r.size_mm, j.css_eff_mm, j.oss_mm, j.gape_mm)
         assert r.r == pytest.approx(max(0.85 * r.size_mm * g.s / 2.0, 1.5))  # 0,85 × la abertura
@@ -273,41 +271,83 @@ def test_la_clase_depende_del_tamano_y_las_formas_y_colores_son_los_de_la_clase(
     assert len(set(mr.CLASS_COLORS)) == 4 and len(set(mr.VERTICES)) == 4
 
 
-def test_las_rocas_de_la_correa_son_cuantiles_del_producto_y_de_los_finos():
+def _clases_dibujadas(elementos: list[ET.Element]) -> list[int]:
+    n = [0, 0, 0, 0]
+    for e in elementos:
+        n[int(re.search(r"-(\d)\b", e.get("class").split()[1]).group(1))] += 1
+    return n
+
+
+@pytest.mark.parametrize("nombre", CASOS)
+def test_la_correa_dibuja_todas_las_marcas_y_las_clases_son_las_del_modelo(nombre):
+    """Sin escala ni descarte: 30 cuantiles del producto y 12 de los finos, todos visibles."""
+    c = md.calcular({**md.valores_por_defecto(), **CASOS[nombre]})
+    d = _dibujadas(c)
+    assert len(d["prod"]) == mr.PRODUCTO
+    assert len(d["fin"]) == (mr.FINOS if c.pasante is not None else 0)
+    prod = [round(x, 2) for x in mr.cuantiles(c.prod_chancador, mr.PRODUCTO)]
+    assert sorted(float(e.get("data-mm")) for e in d["prod"]) == sorted(prod)
+    esperado = [mr.PRODUCTO * f for f in mr.fracciones_clases(c, c.prod_chancador)]
+    for dibujadas, esp in zip(_clases_dibujadas(d["prod"]), esperado, strict=True):
+        assert abs(dibujadas - esp) <= 1.0 + 1e-9, (nombre, dibujadas, esp)
+    if c.pasante is not None:
+        esperado = [mr.FINOS * f for f in mr.fracciones_clases(c, c.pasante)]
+        for dibujadas, esp in zip(_clases_dibujadas(d["fin"]), esperado, strict=True):
+            assert abs(dibujadas - esp) <= 1.0 + 1e-9, (nombre, dibujadas, esp)
+    for e in d["prod"] + d["fin"]:  # tamaño mínimo visible y relleno sólido en todas las clases
+        x0, y0, x1, y1 = _caja(e)
+        assert min(x1 - x0, y1 - y0) >= 6.0 and e.get("fill-opacity") == "1"
+        assert ms.Y_CORREA - 40 <= y0 and y1 <= ms.Y_CORREA
+    assert _sin_cruces(d["prod"] + d["fin"])
+
+
+def test_las_marcas_del_producto_estan_bajo_la_descarga_y_los_finos_aguas_arriba():
     c = calc()
     d = _dibujadas(c)
-    prod = {round(x, 2) for x in mr.cuantiles(c.prod_chancador, mr.PRODUCTO)}
-    fin = {round(x, 2) for x in mr.cuantiles(c.pasante, mr.FINOS)}
-    assert 5 <= len(d["prod"]) <= mr.PRODUCTO and 3 <= len(d["fin"]) <= mr.FINOS
-    assert {float(e.get("data-mm")) for e in d["prod"]} <= prod
-    assert {float(e.get("data-mm")) for e in d["fin"]} <= fin
-    # sobre la correa; los finos, aguas arriba (a la izquierda) del producto
+    g = ms.geometria(c, 3.0)
     xs_prod = [(_caja(e)[0] + _caja(e)[2]) / 2 for e in d["prod"]]
     xs_fin = [(_caja(e)[0] + _caja(e)[2]) / 2 for e in d["fin"]]
-    assert all(ms.Y_CORREA - 16 <= _caja(e)[3] <= ms.Y_CORREA for e in d["prod"] + d["fin"])
-    assert sum(xs_fin) / len(xs_fin) < sum(xs_prod) / len(xs_prod)
+    assert min(xs_prod) > g.xc and max(xs_fin) < min(xs_prod)  # la correa avanza hacia la derecha
     assert _dibujadas(calc(grizzly=False))["fin"] == []  # sin parrilla no hay finos
     cerrado = calc(css=8.0)  # un OSS más cerrado da un producto más fino
     assert max(mr.cuantiles(cerrado.prod_chancador, 30)) < max(mr.cuantiles(c.prod_chancador, 30))
+    textos = [e.text for e in tree(svg(c)).iter(NS + "text")]
+    assert "Correa: marca = 1/30 del producto" in textos
+    assert "(tamaño no a escala; finos: 1/12)" in textos
+
+
+def _luminancia(hexa: str) -> float:
+    canales = [int(hexa[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+    lin = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in canales]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def _contraste(a: str, b: str) -> float:
+    la, lb = sorted((_luminancia(a), _luminancia(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
 
 
 @pytest.mark.parametrize("view", ms.VIEWS)
-def test_hay_una_sola_leyenda_con_el_porcentaje_de_masa_del_modelo(view):
+def test_la_leyenda_es_unica_en_dos_bloques_con_texto_en_tinta_y_contraste(view):
     c = md.calcular({**md.valores_por_defecto(), "top": 580.0, "grizzly": False})
-    textos = [e.text for e in tree(svg(c, view=view)).iter(NS + "text")]
-    frac = mr.fracciones_clases(c)
-    assert sum(frac) == pytest.approx(1.0)
-    esperados = [
-        f"≤ CSS: {es(100 * frac[0], 1)} % de la masa",
-        f"entre CSS y OSS: {es(100 * frac[1], 1)} %",
-        f"mayor que el OSS: {es(100 * frac[2], 1)} %",
-        f"colpa (> 0,8·boca): {es(100 * frac[3], 1)} %",
-    ]
-    for t_ in esperados:
-        assert textos.count(t_) == 1, t_
-    pct = pasante_en(c.prod_chancador, c.jaw.oss_mm * 1000.0)
-    assert f"Producto: {es(100 * pct, 0)} % bajo el OSS" in textos
-    assert sum("de la masa" in (t_ or "") for t_ in textos) == 1
+    root = tree(svg(c, view=view))
+    textos = [e.text for e in root.iter(NS + "text")]
+    fa, fp = (mr.fracciones_clases(c, s_) for s_ in (c.carga, c.prod_chancador))
+    plantillas = ["≤ CSS: {} % de la masa", "entre CSS y OSS: {} %", "mayor que el OSS: {} %",
+                  "colpa (> 0,8·boca): {} %"]  # fmt: skip
+    pares = [zip(plantillas, fr, strict=True) for fr in (fa, fp)]
+    lineas = [p.format(es(100 * f, 1)) for par in pares for p, f in par]
+    en_leyenda = [x for x in textos if x in set(lineas)]
+    assert en_leyenda == lineas  # los dos bloques, en orden: primero la cámara y luego la correa
+    assert (
+        textos.count("Alimentación a la cámara") == 1 and textos.count("Producto en la correa") == 1
+    )
+    assert sum(f > 0 for f in fa) >= 2 and fa != fp  # los dos bloques dicen cosas distintas
+    for e in root.iter(NS + "text"):
+        if e.text in lineas or e.text in ("Alimentación a la cámara", "Producto en la correa"):
+            assert INK in e.get("style")  # el texto va en tinta; el color, solo en la forma
+    assert _contraste(INK, PAPER) >= 4.5
+    assert not any("Producto:" in (x or "") for x in textos)  # ya no hay un % suelto ambiguo
 
 
 def test_la_nota_solo_cambia_el_dibujo_esta_en_el_bloque_de_informacion():
@@ -369,3 +409,34 @@ def test_la_abertura_oscila_entre_el_css_y_el_oss_y_el_punto_tarda_dos_ciclos():
     assert es(j.css_eff_mm, 1) in texts and es(j.oss_mm, 1) in texts
     with i18n.use("es"):
         assert "animation" not in ms.abertura_svg(j.css_eff_mm, j.oss_mm, j.rpm, 20, paused=True)
+
+
+def test_la_theta_y_su_arco_no_los_pisa_ninguna_roca():
+    for nombre in CASOS:
+        c = md.calcular({**md.valores_por_defecto(), **CASOS[nombre]})
+        root = tree(svg(c))
+        g = ms.geometria(c, 3.0)
+        th = next(e for e in root.iter(NS + "text") if e.text == "θ")
+        x, y = float(th.get("x")), float(th.get("y"))
+        caja_theta = (x - 8.0, y - 13.0, x + 8.0, y + 4.0)
+        arco = (g.xf - ms.ARCO_R, g.apex_y - ms.ARCO_R, g.xf + 4.0, g.apex_y)
+        for e in _todas(root, "rock"):
+            assert not _se_cruzan(_caja(e), caja_theta), nombre
+            assert not _se_cruzan(_caja(e), arco), nombre
+        res = ms.reservadas(c, g)[0]
+        assert res.cx - res.r <= caja_theta[0] and caja_theta[2] <= res.cx + res.r
+        assert res.cy - res.r <= caja_theta[1] and caja_theta[3] <= res.cy + res.r
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_ningun_texto_del_esquema_se_sale_del_lienzo(lang):
+    """Estima el ancho de cada texto (0,52 × el cuerpo por carácter) y exige que quepa."""
+    for cambios in CASOS.values():
+        c = md.calcular({**md.valores_por_defecto(), **cambios})
+        for e in tree(svg(c, lang=lang)).iter(NS + "text"):
+            if not e.text or e.get("transform"):
+                continue
+            ancho = 0.52 * float(e.get("font-size")) * len(e.text)
+            x, ancla = float(e.get("x")), e.get("text-anchor")
+            izq = x if ancla == "start" else x - ancho if ancla == "end" else x - ancho / 2
+            assert izq >= 0 and izq + ancho <= ms.W - 4, (lang, e.text, izq, ancho)

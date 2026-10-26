@@ -43,9 +43,10 @@ def cuantiles(s: Stream, n: int) -> list[float]:
     return [size_at_passing(s.grid, s.solids, (i + 0.5) / n) / MM for i in range(n)]
 
 
-def fracciones_clases(c: Calculo) -> list[float]:
-    """Fracción de la masa que llega al chancador en cada clase (suma 1)."""
-    j, f = c.jaw, c.carga
+def fracciones_clases(c: Calculo, s: Stream | None = None) -> list[float]:
+    """Fracción de la masa de la corriente `s` (por defecto, la que llega al chancador) en cada
+    clase (suma 1)."""
+    j, f = c.jaw, c.carga if s is None else s
     p = [pasante_en(f, x * MM) for x in (j.css_eff_mm, j.oss_mm, COLPA_FRACCION_BOCA * j.gape_mm)]
     return [p[0], p[1] - p[0], p[2] - p[1], 1.0 - p[2]]
 
@@ -56,26 +57,35 @@ def _azar(i: int, j: int) -> float:
     return x - math.floor(x)
 
 
-def puntos(k: int, cx: float, cy: float, r: float, semilla: int) -> list[tuple[float, float]]:
-    """Polígono irregular de VERTICES[k] vértices, con radios entre 0,8 y 1 de r."""
+def puntos(k: int, cx: float, cy: float, r: float, semilla: int,
+           irregular: float = 0.2) -> list[tuple[float, float]]:  # fmt: skip
+    """Polígono de VERTICES[k] vértices, con radios entre (1 − irregular)·r y r."""
     n = VERTICES[k]
     giro = _azar(semilla, 0) * 2.0 * math.pi
     return [
         (
-            cx + r * (0.8 + 0.2 * _azar(semilla, i + 1)) * math.cos(giro + 2 * math.pi * i / n),
-            cy + r * (0.8 + 0.2 * _azar(semilla, i + 1)) * math.sin(giro + 2 * math.pi * i / n),
+            cx
+            + r
+            * (1 - irregular + irregular * _azar(semilla, i + 1))
+            * math.cos(giro + 2 * math.pi * i / n),
+            cy
+            + r
+            * (1 - irregular + irregular * _azar(semilla, i + 1))
+            * math.sin(giro + 2 * math.pi * i / n),
         )
         for i in range(n)
     ]
 
 
-def forma(k: int, cx: float, cy: float, r: float, semilla: int, clase: str, mm: float) -> str:
+def forma(k: int, cx: float, cy: float, r: float, semilla: int, clase: str, mm: float,
+          marca: bool = False) -> str:  # fmt: skip
     """Una roca: polígono irregular con el color, los vértices y el borde de su clase."""
-    p = " ".join(f"{x:.1f},{y:.1f}" for x, y in puntos(k, cx, cy, r, semilla))
+    pts = puntos(k, cx, cy, r, semilla, 0.0 if marca else 0.2)  # las marcas son regulares
+    p = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
     trazo = f' stroke-dasharray="{BORDES[k]}"' if BORDES[k] else ""
     return (
         f'<polygon class="{clase} {clase}-{k}" data-mm="{mm:.2f}" points="{p}" '
-        f'fill="{CLASS_COLORS[k]}" fill-opacity=".8" stroke="{INK}" '
+        f'fill="{CLASS_COLORS[k]}" fill-opacity="{1 if marca else 0.8}" stroke="{INK}" '
         f'stroke-width="{GROSOR[k]}"{trazo}/>'
     )
 
@@ -106,7 +116,8 @@ def sin_encimar(candidatas: list[Roca], ocupadas: list[Roca] | None = None) -> l
     return nuevas
 
 
-def rocas_de_camara(c: Calculo, xf: float, yb: float, s: float) -> list[Roca]:
+def rocas_de_camara(c: Calculo, xf: float, yb: float, s: float,
+                    reservadas: tuple[Roca, ...] = ()) -> list[Roca]:  # fmt: skip
     """Las rocas de la carga que caben sin encimarse, de mayor a menor. Las que pasan por la
     abertura (≤ CSS) se dibujan cayendo bajo ella, en fila."""
     j = c.jaw
@@ -122,23 +133,37 @@ def rocas_de_camara(c: Calculo, xf: float, yb: float, s: float) -> list[Roca]:
         else:
             cy = yb - j.height * (x - j.css_eff_mm) / (j.gape_mm - j.css_eff_mm) * s
             cands.append(Roca(x, k, xf + x * s / 2.0, cy, r))
-    return sin_encimar(cands)
+    return sin_encimar(cands, list(reservadas))
 
 
-def rocas_de_correa(
-    c: Calculo, s: Stream, n: int, x0: float, x1: float, y_correa: float, escala: float
-) -> list[Roca]:
-    """n cuantiles de la corriente `s` sobre la correa, entre x0 y x1, repartidos con la razón
-    áurea y sin encimarse. Pequeñas: radio entre 1,6 y 7 px."""
+MARCA_R = (4.5, 6.5)  # radio (px) de las marcas de la correa: mínimo 4,5 ⇒ cajas de ≥ 6 px
+MARCA_PASO = 14.5  # px entre marcas
+POR_FILA = 15
+
+
+def marcas_de_correa(c: Calculo, s: Stream, n: int, x0: float, y_correa: float) -> list[Roca]:
+    """TODAS las n marcas de la corriente `s` (cuantiles de masa), de menor a mayor, en filas
+    ordenadas sobre la correa a partir de x0. NO van a escala (cada marca vale 1/n de la masa; el
+    radio crece de 4,5 a 6,5 px con el orden) y no se descarta ninguna."""
     j = c.jaw
-    cands = []
-    for i, x in enumerate(cuantiles(s, n)):
-        r = min(max(AJUSTE * x * escala / 2.0, 1.6), 7.0)
-        cx = x0 + (x1 - x0) * ((i * 0.618034 + 0.3) % 1.0)
-        cands.append(
-            Roca(x, clase_de(x, j.css_eff_mm, j.oss_mm, j.gape_mm), cx, y_correa - r - 1.0, r)
+    out = []
+    xs = cuantiles(s, n)
+    for i, x in enumerate(xs):
+        fila, col = divmod(i, POR_FILA)
+        r = MARCA_R[0] + (MARCA_R[1] - MARCA_R[0]) * i / max(n - 1, 1)
+        cy = y_correa - MARCA_R[1] - 1.0 - fila * (2 * MARCA_R[1] + 2.0)
+        out.append(
+            Roca(x, clase_de(x, j.css_eff_mm, j.oss_mm, j.gape_mm), x0 + col * MARCA_PASO, cy, r)
         )
-    return sin_encimar(sorted(cands, key=lambda r: -r.r))
+    return out
+
+
+def dibujar_marcas(marcas: list[Roca], clase: str) -> str:
+    """El SVG de las marcas de la correa: regulares y con relleno sólido en todas las clases."""
+    return "".join(
+        forma(r.clase, r.cx, r.cy, r.r, i, clase, r.size_mm, marca=True)
+        for i, r in enumerate(marcas)
+    )
 
 
 def dibujar(rocas: list[Roca], clase: str) -> str:
