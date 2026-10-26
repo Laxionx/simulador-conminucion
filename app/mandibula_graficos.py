@@ -29,6 +29,12 @@ def _curva(fig: go.Figure, s: Stream, nombre: str, color: str, dash: str = "soli
     )  # fmt: skip
 
 
+def _rango_log(c: Calculo) -> list[float]:
+    """Rango del eje x en log10 de mm (como lo pide Plotly), de la más fina a la más gruesa."""
+    s = c.mina.grid.sieves / MM
+    return [float(np.log10(s.min())), float(np.log10(s.max())) + 0.05]
+
+
 def granulometria_fig(c: Calculo) -> go.Figure:
     """Pasante acumulado (%) de cada corriente (eje logarítmico) y el CSS y OSS efectivos."""
     fig = go.Figure()
@@ -38,12 +44,15 @@ def granulometria_fig(c: Calculo) -> go.Figure:
     _curva(fig, c.carga, t("jaw.plot.carga"), STREAM_COLORS["alim_molino"], "dash")
     _curva(fig, c.prod_chancador, t("jaw.plot.prod"), STEEL)
     _curva(fig, c.producto, t("jaw.plot.total"), INK)
+    # CSS y OSS como trazos (x en mm): en un eje logarítmico las líneas de `add_vline` van en log10
     for x, name in ((c.jaw.css_eff_mm, "css"), (c.jaw.oss_mm, "oss")):
-        fig.add_vline(x=x, line=dict(color=NARANJA, width=1.6, dash="dashdot"),
-                      annotation_text=t(f"jaw.plot.{name}"), annotation_position="top",
-                      annotation_font=dict(size=12, color=NARANJA))  # fmt: skip
+        fig.add_scatter(
+            x=[x, x], y=[0, 100], mode="lines+text", text=["", t(f"jaw.plot.{name}")],
+            textposition="bottom right", name=t(f"jaw.plot.{name}"), showlegend=False,
+            line=dict(color=NARANJA, width=1.6, dash="dashdot"), textfont=dict(color=NARANJA),
+        )  # fmt: skip
     _layout(fig, t("jaw.plot.gran.title"),
-            dict(type="log", title=t("jaw.plot.gran.x")),
+            dict(type="log", title=t("jaw.plot.gran.x"), range=_rango_log(c)),
             dict(title=t("jaw.plot.gran.y"), range=[0, 102]))  # fmt: skip
     return fig
 

@@ -18,6 +18,7 @@ sys.path.insert(0, str(APP_DIR))
 
 import i18n  # noqa: E402
 import mandibula_datos as md  # noqa: E402
+import mandibula_rocas as mr  # noqa: E402
 import mandibula_svg as ms  # noqa: E402
 from equipos import as_images, es  # noqa: E402
 
@@ -180,93 +181,152 @@ def test_la_amplificacion_y_la_velocidad_solo_cambian_el_dibujo():
     assert "solo cambia el dibujo" in svg(c, amp=4.0, vel=25) and "×4" in svg(c, amp=4.0)
 
 
-def _rocas(root: ET.Element) -> dict[int, list[ET.Element]]:
+def _rocas(root: ET.Element, prefijo: str = "rock") -> dict[int, list[ET.Element]]:
     out: dict[int, list[ET.Element]] = {0: [], 1: [], 2: [], 3: []}
     for e in root.iter():
-        m = re.search(r"\brock-(\d)\b", e.get("class", ""))
+        m = re.search(rf"\b{prefijo}-(\d)\b", e.get("class", ""))
         if m:
             out[int(m.group(1))].append(e)
     return out
 
 
-def _fracciones(c: md.Calculo) -> list[float]:
-    j, f = c.jaw, c.carga
-    p = [pasante_en(f, x * md.MM) for x in (j.css_eff_mm, j.oss_mm, 0.8 * j.gape_mm)]
-    return [p[0], p[1] - p[0], p[2] - p[1], 1.0 - p[2]]
+def _todas(root: ET.Element, prefijo: str) -> list[ET.Element]:
+    return [e for k in _rocas(root, prefijo).values() for e in k]
+
+
+def _caja(e: ET.Element) -> tuple[float, float, float, float]:
+    pts = [tuple(map(float, p.split(","))) for p in e.get("points").split()]
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _se_cruzan(a, b) -> bool:
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def _sin_cruces(elementos: list[ET.Element]) -> bool:
+    cajas = [_caja(e) for e in elementos]
+    return not any(
+        _se_cruzan(cajas[i], cajas[j]) for i in range(len(cajas)) for j in range(i + 1, len(cajas))
+    )
+
+
+def _dibujadas(c: md.Calculo) -> dict[str, list[ET.Element]]:
+    root = tree(svg(c))
+    return {p: _todas(root, p) for p in ("rock", "prod", "fin")}
 
 
 @pytest.mark.parametrize("nombre", CASOS)
-def test_hay_120_rocas_y_cada_clase_tiene_su_fraccion_de_la_masa(nombre):
+def test_las_rocas_no_se_encriman_y_son_cuantiles_de_la_carga(nombre):
     c = md.calcular({**md.valores_por_defecto(), **CASOS[nombre]})
-    rocas = _rocas(tree(svg(c)))
-    n = [len(rocas[k]) for k in range(4)]
-    assert sum(n) == ms.ROCAS == 120
-    for k, frac in enumerate(_fracciones(c)):
-        assert abs(n[k] - ms.ROCAS * frac) <= 1.0 + 1e-9, (nombre, k, n[k], ms.ROCAS * frac)
-    assert n == ms.conteo_clases(c)
+    d = _dibujadas(c)
+    cuantiles = {round(x, 2) for x in mr.cuantiles(c.carga, mr.ROCAS)}
+    assert 3 <= len(d["rock"]) <= mr.ROCAS
+    assert {float(e.get("data-mm")) for e in d["rock"]} <= cuantiles
+    for grupo in d.values():
+        assert _sin_cruces(grupo), (nombre, len(grupo))  # cajas que no se cruzan
+    assert _sin_cruces(d["prod"] + d["fin"])  # y las de la correa tampoco entre sí
 
 
-def test_los_casos_cubren_las_cuatro_clases():
-    vistos = {
-        k
-        for nombre in CASOS
-        for k, v in enumerate(
-            ms.conteo_clases(md.calcular({**md.valores_por_defecto(), **CASOS[nombre]}))
-        )
-        if v
-    }
-    assert vistos == {0, 1, 2, 3}
+@pytest.mark.parametrize("nombre", CASOS)
+def test_cada_roca_esta_a_la_altura_de_la_regla_de_la_abertura(nombre):
+    c = md.calcular({**md.valores_por_defecto(), **CASOS[nombre]})
+    j, g = c.jaw, ms.geometria(c, 3.0)
+    rocas = mr.rocas_de_camara(c, g.xf, g.yb, g.s)
+    for r in rocas:
+        assert r.clase == mr.clase_de(r.size_mm, j.css_eff_mm, j.oss_mm, j.gape_mm)
+        assert r.r == pytest.approx(max(0.85 * r.size_mm * g.s / 2.0, 1.5))  # 0,85 × la abertura
+        if r.size_mm > j.css_eff_mm:
+            abertura = j.css_eff_mm + (j.gape_mm - j.css_eff_mm) * (g.yb - r.cy) / (j.height * g.s)
+            assert abertura == pytest.approx(r.size_mm, rel=1e-9)  # su tamaño = la abertura local
+            assert r.cx == pytest.approx(g.xf + r.size_mm * g.s / 2.0)
+    assert len(_dibujadas(c)["rock"]) == len(rocas)  # lo dibujado sale de esas rocas
 
 
-def test_cada_clase_tiene_su_color_y_su_forma_y_la_leyenda_dice_cuantas_son():
+def test_la_regla_no_deja_que_dos_rocas_se_crucen_aunque_sus_alturas_coincidan():
+    a, b = mr.Roca(100.0, 2, 50.0, 50.0, 20.0), mr.Roca(90.0, 2, 60.0, 60.0, 20.0)
+    c = mr.Roca(30.0, 1, 200.0, 50.0, 5.0)
+    assert mr.sin_encimar([a, b, c]) == [a, c]  # b se cruza con a y se salta
+    assert mr.sin_encimar([b, a]) == [b]
+
+
+def test_la_clase_depende_del_tamano_y_las_formas_y_colores_son_los_de_la_clase():
+    j = md.ejemplo().jaw
+    css, oss, g = j.css_eff_mm, j.oss_mm, j.gape_mm
+    tamanos = (css, css + 0.1, oss, oss + 0.1, 0.8 * g + 1)
+    assert [mr.clase_de(x, css, oss, g) for x in tamanos] == [0, 1, 1, 2, 3]
     c = md.calcular({**md.valores_por_defecto(), "top": 580.0, "grizzly": False})
     root = tree(svg(c))
-    rocas = _rocas(root)
-    formas = {0: NS + "circle", 1: NS + "rect", 2: NS + "polygon", 3: NS + "polygon"}
-    vertices = {2: 3, 3: 6}
-    assert len(set(ms.CLASS_COLORS)) == 4
-    for k, items in rocas.items():
-        assert items, k
-        for e in items:
-            assert e.tag == formas[k] and e.get("fill") == ms.CLASS_COLORS[k]
-            if k in vertices:
-                assert len(e.get("points").split()) == vertices[k]
-    assert float(rocas[3][0].get("stroke-width")) > float(rocas[0][0].get("stroke-width"))
-    texts = [e.text for e in root.iter(NS + "text")]
-    n = ms.conteo_clases(c)
-    assert f"≤ CSS: {n[0]} rocas" in texts and f"colpa (> 0,8·boca): {n[3]}" in texts
+    vistas = set()
+    for prefijo in ("rock", "prod", "fin"):
+        for k, items in _rocas(root, prefijo).items():
+            for e in items:
+                vistas.add(k)
+                assert e.tag == NS + "polygon" and e.get("fill") == mr.CLASS_COLORS[k]
+                assert len(e.get("points").split()) == mr.VERTICES[k]
+                assert mr.clase_de(float(e.get("data-mm")), css, oss, g) == k
+    assert vistas == {0, 1, 2, 3}
+    grueso = [e for e in _rocas(root)[3]]
+    assert grueso and float(grueso[0].get("stroke-width")) > 2.5  # la colpa lleva borde grueso
+    fino = _rocas(root, "prod")[0] + _rocas(root, "rock")[0]
+    assert not fino or all(e.get("stroke-dasharray") for e in fino)  # y la fina, borde a trazos
+    assert len(set(mr.CLASS_COLORS)) == 4 and len(set(mr.VERTICES)) == 4
 
 
-def _centro(e: ET.Element) -> tuple[float, float]:
-    if e.tag == NS + "rect":
-        return float(e.get("x")) + float(e.get("width")) / 2, float(e.get("y")) + float(
-            e.get("height")
-        ) / 2
-    pts = [tuple(map(float, p.split(","))) for p in e.get("points").split()]
-    return sum(x for x, _ in pts) / len(pts), sum(y for _, y in pts) / len(pts)
-
-
-def test_cada_roca_esta_a_la_altura_donde_su_tamano_iguala_la_abertura_local():
-    c = md.calcular({**md.valores_por_defecto(), "top": 580.0})
-    j, g = c.jaw, ms.geometria(c, 3.0)
-    rocas = _rocas(tree(svg(c)))
-    for k in (1, 2, 3):
-        for e in rocas[k]:
-            cx, cy = _centro(e)
-            tamano = 2.0 * (cx - g.xf) / g.s  # entre las dos mandíbulas: ancho = tamaño
-            assert j.css_eff_mm < tamano
-            abertura_local = j.css_eff_mm + (j.gape_mm - j.css_eff_mm) * (g.yb - cy) / (
-                j.height * g.s
-            )
-            assert abertura_local == pytest.approx(tamano, rel=0.02, abs=1.5)
-            assert ms.clase_de(tamano, j.css_eff_mm, j.oss_mm, j.gape_mm) == k
-
-
-def test_los_tamanos_de_las_rocas_son_deterministas_y_crecientes():
+def test_las_rocas_de_la_correa_son_cuantiles_del_producto_y_de_los_finos():
     c = calc()
-    a, b = ms.tamanos_rocas(c), ms.tamanos_rocas(c)
-    assert a == b and a == sorted(a) and len(a) == 120
-    assert svg(c) == svg(c) and svg(c, paused=False) == svg(c, paused=False)  # sin azar
+    d = _dibujadas(c)
+    prod = {round(x, 2) for x in mr.cuantiles(c.prod_chancador, mr.PRODUCTO)}
+    fin = {round(x, 2) for x in mr.cuantiles(c.pasante, mr.FINOS)}
+    assert 5 <= len(d["prod"]) <= mr.PRODUCTO and 3 <= len(d["fin"]) <= mr.FINOS
+    assert {float(e.get("data-mm")) for e in d["prod"]} <= prod
+    assert {float(e.get("data-mm")) for e in d["fin"]} <= fin
+    # sobre la correa; los finos, aguas arriba (a la izquierda) del producto
+    xs_prod = [(_caja(e)[0] + _caja(e)[2]) / 2 for e in d["prod"]]
+    xs_fin = [(_caja(e)[0] + _caja(e)[2]) / 2 for e in d["fin"]]
+    assert all(ms.Y_CORREA - 16 <= _caja(e)[3] <= ms.Y_CORREA for e in d["prod"] + d["fin"])
+    assert sum(xs_fin) / len(xs_fin) < sum(xs_prod) / len(xs_prod)
+    assert _dibujadas(calc(grizzly=False))["fin"] == []  # sin parrilla no hay finos
+    cerrado = calc(css=8.0)  # un OSS más cerrado da un producto más fino
+    assert max(mr.cuantiles(cerrado.prod_chancador, 30)) < max(mr.cuantiles(c.prod_chancador, 30))
+
+
+@pytest.mark.parametrize("view", ms.VIEWS)
+def test_hay_una_sola_leyenda_con_el_porcentaje_de_masa_del_modelo(view):
+    c = md.calcular({**md.valores_por_defecto(), "top": 580.0, "grizzly": False})
+    textos = [e.text for e in tree(svg(c, view=view)).iter(NS + "text")]
+    frac = mr.fracciones_clases(c)
+    assert sum(frac) == pytest.approx(1.0)
+    esperados = [
+        f"≤ CSS: {es(100 * frac[0], 1)} % de la masa",
+        f"entre CSS y OSS: {es(100 * frac[1], 1)} %",
+        f"mayor que el OSS: {es(100 * frac[2], 1)} %",
+        f"colpa (> 0,8·boca): {es(100 * frac[3], 1)} %",
+    ]
+    for t_ in esperados:
+        assert textos.count(t_) == 1, t_
+    pct = pasante_en(c.prod_chancador, c.jaw.oss_mm * 1000.0)
+    assert f"Producto: {es(100 * pct, 0)} % bajo el OSS" in textos
+    assert sum("de la masa" in (t_ or "") for t_ in textos) == 1
+
+
+def test_la_nota_solo_cambia_el_dibujo_esta_en_el_bloque_de_informacion():
+    root = tree(svg(calc(), amp=3.0, vel=10))
+    textos = {e.text: float(e.get("x")) for e in root.iter(NS + "text")}
+    assert textos["solo cambia el dibujo"] == 650.0 and "Carrera ×3, velocidad 10 %:" in textos
+    assert not any(e.text and "Carrera ×3 y velocidad" in e.text for e in root.iter(NS + "text"))
+
+
+def test_los_rotulos_van_a_un_lado_con_linea_guia():
+    c = calc()
+    root = tree(svg(c))
+    g = ms.geometria(c, 3.0)
+    x = {e.text: float(e.get("x")) for e in root.iter(NS + "text")}
+    # los rótulos de CSS y OSS van a un lado de la corriente de descarga y no encima de ella
+    assert x["CSS = 18,0 mm"] > g.xf + 40 and x["OSS = 51,0 mm"] > g.xf + 40
+    guias = [e for e in root.iter(NS + "line") if e.get("stroke-dasharray") == "3 3"]
+    assert len(guias) >= 5
+    assert "θ" in x  # el ángulo se rotula con el símbolo; su valor va en el bloque de información
 
 
 def test_la_vista_de_detalle_es_el_mismo_dibujo_con_otro_viewbox():
@@ -287,7 +347,7 @@ def test_la_parrilla_se_dibuja_con_su_abertura_a_escala_y_se_apaga():
     root = tree(svg(c))
     barras = [e for e in by_id(root, "jw-parrilla") if e.tag == NS + "rect"]
     paso = float(barras[1].get("x")) - float(barras[0].get("x"))
-    assert paso == pytest.approx(9.0 + c.parrilla.aperture_mm * g.s, abs=0.15)
+    assert paso == pytest.approx(8.0 + c.parrilla.aperture_mm * g.s, abs=0.15)
     assert not any(e.get("id") == "jw-parrilla" for e in tree(svg(calc(grizzly=False))).iter())
 
 

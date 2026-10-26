@@ -167,11 +167,12 @@ def test_las_curvas_usan_los_datos_del_calculo_y_la_tabla_de_king(eje):
         king = next(tr for tr in fig.data if tr.name == "Tabla de King")
         assert list(king.y) == [q for _, q in sorted(TABLA_KING[4].capacidad_tph.items())]
         assert list(king.x) == pytest.approx([o - c.jaw.stroke for o in (51, 63, 76, 102)])
-    assert {s.name for s in gran.data} == {
+    assert {s.name for s in gran.data if s.mode != "lines+text"} == {
         "Alimentación de mina", "Pasante de la parrilla", "Alimentación al chancador",
         "Producto del chancador", "Producto total",
     }  # fmt: skip
-    assert len(gran.layout.shapes) == 2  # CSS y OSS
+    assert not gran.layout.shapes  # el CSS y el OSS son dos trazos, no formas en log10
+    assert {tr.name for tr in gran.data if tr.mode == "lines+text"} == {"CSS", "OSS"}
     with pytest.raises(ValueError, match="Eje"):
         mg.capacidad_fig(c, "otro")
 
@@ -275,9 +276,9 @@ def test_humo_de_la_pestana_en_cada_idioma(lang, tab, ok, king):
     assert len(at.metric) == 12  # 6 de simulación y 6 de chancado
     jaw = at.metric[6:]
     assert [m.label for m in jaw][:3] == (
-        ["Capacidad efectiva (t/h)", "Utilización", "P80 del producto total (mm)"]
+        ["Capacidad (t/h)", "Utilización", "P80 producto (mm)"]
         if lang == "es"
-        else ["Effective capacity (t/h)", "Utilization", "Total product P80 (mm)"]
+        else ["Capacity (t/h)", "Utilization", "Product P80 (mm)"]
     )
     c = md.ejemplo()
     with i18n.use(lang):
@@ -286,6 +287,7 @@ def test_humo_de_la_pestana_en_cada_idioma(lang, tab, ok, king):
         assert jaw[4].value == es(c.jaw.rpm / c.jaw.critical_rpm, 2)
     assert sum(ok in m for m in lines(at)) == 2  # el panel de chancado y el de simulación
     assert any(king in c_.value for c_ in at.caption)
+    assert not any("de la masa" in c_.value or "of the mass" in c_.value for c_ in at.caption)
     assert len(at.get("plotly_chart")) >= 2 + 1 + 3  # curvas del chancado y gráficos de simulación
     assert len(at.latex) == 12 and any(w.key == "jaw_prueba_css" for w in at.button)
     html = " ".join(h.value for h in at.get("html"))
@@ -455,3 +457,34 @@ def test_fuzz_de_30_combinaciones_no_tira_excepciones(lang):
             assert all(e.value in keys or "rechazó" in e.value or "rejected" in e.value
                        for e in at.error), [e.value for e in at.error]  # fmt: skip
     print(f"fuzz {lang}: {sum(tiempos) / len(tiempos):.2f} s por corrida de la app completa")
+
+
+@pytest.mark.parametrize("cambios", [{}, {"css": 8.0}, {"wear": 20.0}, {"gape": 1066.8}])
+def test_el_grafico_de_granulometria_tiene_el_eje_y_las_lineas_dentro_del_rango_de_los_datos(
+    cambios,
+):
+    """Regresión: en un eje log de Plotly las líneas de `add_vline` van en log10(x), y el CSS = 18
+    caía en 10^18. Nada puede salir del rango de tamaños de los datos."""
+    import numpy as np
+
+    c = md.calcular(vals(**cambios))
+    with i18n.use("es"):
+        fig = mg.granulometria_fig(c)
+    lo, hi = c.mina.grid.sieves.min() / md.MM, c.mina.grid.sieves.max() / md.MM
+    for tr in fig.data:
+        xs = np.asarray(tr.x, dtype=float)
+        assert lo <= xs.min() and xs.max() <= hi, tr.name
+    assert not fig.layout.shapes and not fig.layout.annotations  # nada en coordenadas de log10
+    rango = fig.layout.xaxis.range
+    assert 10 ** rango[0] == pytest.approx(lo, rel=1e-6) and hi <= 10 ** rango[1] <= 1.2 * hi
+    lineas = {tr.name: tr.x[0] for tr in fig.data if tr.mode == "lines+text"}
+    assert lineas == {"CSS": c.jaw.css_eff_mm, "OSS": c.jaw.oss_mm}
+    assert lo < c.jaw.css_eff_mm < c.jaw.oss_mm < hi
+
+
+def test_los_seis_indicadores_van_en_dos_filas_de_tres_con_rotulos_cortos():
+    at = run()
+    jaw = at.metric[6:]
+    assert len(jaw) == 6 and all(len(m.label) <= 24 for m in jaw)
+    assert all(m.help for m in jaw)  # el nombre completo va en la ayuda
+    assert len(at.tabs[4].columns) >= 6  # dos filas de 3 columnas

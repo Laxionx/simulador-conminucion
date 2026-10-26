@@ -38,19 +38,16 @@ from mandibula_datos import (
 from mandibula_graficos import EJES, capacidad_fig, granulometria_fig
 from mandibula_svg import (
     AMP_RANGE,
-    CLASS_KEYS,
     SPEED_RANGE,
     VIEW_FULL,
     VIEWS,
     abertura_svg,
-    conteo_clases,
     jaw_svg,
 )
 
 KEY_EQUIPO, KEY_PARRILLA, KEY_MODELO = PREFIX + "equipo", PREFIX + "grizzly", PREFIX + "model"
 KEY_VISTA, KEY_AMP, KEY_VEL, KEY_EJE = (PREFIX + k for k in ("vista", "amp", "vel", "eje"))
 AMP_DEFECTO, VEL_DEFECTO = 3.0, 10
-SIMBOLOS = ("●", "■", "▲", "⬢")
 NIVEL_PEOR = {"ok": 0, "aviso": 1, "mal": 2}
 
 
@@ -143,16 +140,17 @@ def _controles() -> dict[str, object]:
 
 # ------------------------------------------------------------------ indicadores y estado
 def _indicadores(c: Calculo) -> None:
+    """Seis indicadores en dos filas de tres: rótulos cortos (el nombre completo va en la ayuda)."""
     j = c.jaw
-    cols = st.columns(6)
-    cols[0].metric(t("jaw.m.cap"), es(c.capacidad, 1), help=t("jaw.m.cap.help"))
-    cols[1].metric(t("jaw.m.util"), es(100 * c.utilizacion, 0) + " %", help=t("jaw.m.util.help"))
-    cols[2].metric(t("jaw.m.p80"), es(c.p80, 1), help=t("jaw.m.p80.help"))
-    cols[3].metric(t("jaw.m.pot"), f"{es(c.potencia, 1)} / {es(j.power_kw or 0.0, 0)}",
-                   help=t("jaw.m.pot.help"))  # fmt: skip
-    cols[4].metric(t("jaw.m.nnc"), es(j.rpm / j.critical_rpm, 2), help=t("jaw.m.nnc.help"))
-    cols[5].metric(t("jaw.m.ang"), f"{es(j.bite_angle_deg, 1)} / {es(j.bite_limit_deg, 1)}",
-                   help=t("jaw.m.ang.help"))  # fmt: skip
+    fila1, fila2 = st.columns(3), st.columns(3)
+    fila1[0].metric(t("jaw.m.cap"), es(c.capacidad, 1), help=t("jaw.m.cap.help"))
+    fila1[1].metric(t("jaw.m.util"), es(100 * c.utilizacion, 0) + " %", help=t("jaw.m.util.help"))
+    fila1[2].metric(t("jaw.m.p80"), es(c.p80, 1), help=t("jaw.m.p80.help"))
+    fila2[0].metric(t("jaw.m.pot"), f"{es(c.potencia, 1)} / {es(j.power_kw or 0.0, 0)}",
+                    help=t("jaw.m.pot.help"))  # fmt: skip
+    fila2[1].metric(t("jaw.m.nnc"), es(j.rpm / j.critical_rpm, 2), help=t("jaw.m.nnc.help"))
+    fila2[2].metric(t("jaw.m.ang"), f"{es(j.bite_angle_deg, 1)} / {es(j.bite_limit_deg, 1)}",
+                    help=t("jaw.m.ang.help"))  # fmt: skip
 
 
 def _valor(v: float, d: int = 1) -> str:
@@ -213,10 +211,6 @@ def _vista_controles() -> tuple[str, float, float]:
 def _vista(c: Calculo, animate: bool, view: str, amp: float, vel: float) -> None:
     st.html(as_images(jaw_svg(c, amp, vel, view, paused=not animate),
                       jaw_svg(c, amp, vel, view, paused=True), t("jaw.svg.label")))  # fmt: skip
-    n = conteo_clases(c)
-    st.caption(" · ".join(f"{SIMBOLOS[i]} {t('jaw.svg.leg.' + k, n=n[i])}"
-                          for i, k in enumerate(CLASS_KEYS)))  # fmt: skip
-    st.caption(t("jaw.esquema.nota"))
     j = c.jaw
     left, right = st.columns(2)
     left.html(as_images(abertura_svg(j.css_eff_mm, j.oss_mm, j.rpm, vel, not animate),

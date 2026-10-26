@@ -28,22 +28,32 @@ from equipos import (
     es,
 )
 from i18n import t
-from mandibula_datos import MM, Calculo
+from mandibula_datos import Calculo
+from mandibula_rocas import (
+    CLASS_COLORS,
+    CLASS_KEYS,
+    FINOS,
+    PRODUCTO,
+    ROCAS,
+    dibujar,
+    forma,
+    fracciones_clases,
+    rocas_de_camara,
+    rocas_de_correa,
+    sin_encimar,
+)
 
-from conminucion.datos_mandibula import COLPA_FRACCION_BOCA
-from conminucion.sizes import size_at_passing
+from conminucion.mandibula import pasante_en
 
-W, H = 900, 580
-ROCAS = 120  # cuantiles de masa
+W, H = 900, 650
 MAX_H_PX, MAX_W_PX = 300.0, 200.0  # espacio de la cámara en el dibujo
-XF, Y0, Y_CORREA = 340.0, 130.0, 520.0
+XF, Y0, Y_CORREA = 340.0, 200.0, 590.0
 JAW_W, JAW_EXT, FLY_R = 40.0, 36.0, 44.0
 VIEW_FULL, VIEW_DETAIL = "completo", "detalle"
 VIEWS = (VIEW_FULL, VIEW_DETAIL)
 AMP_RANGE, SPEED_RANGE = (1.0, 8.0), (5, 100)
-CLASS_COLORS = ("#56B4E9", "#E69F00", "#009E73", "#D55E00")  # Okabe-Ito
-CLASS_KEYS = ("fino", "css_oss", "grueso", "colpa")
 IDS = ("jw-boca", "jw-altura", "jw-css", "jw-oss")
+SOLO = "#8A3B12"  # color de la nota «solo cambia el dibujo»
 
 
 @dataclass(frozen=True)
@@ -87,68 +97,6 @@ def geometria(c: Calculo, amp: float) -> Geometria:
     pivot = (xt + JAW_W / 2.0, yt + 12.0)
     phi = _giro_deg(pivot, (xc, yb), amp * j.stroke * s)
     return Geometria(s, XF, Y0, yb, xm, xc, phi, pivot)
-
-
-# ------------------------------------------------------------------ las rocas
-def clase_de(size_mm: float, css_eff_mm: float, oss_mm: float, gape_mm: float) -> int:
-    """0 ≤ CSS · 1 entre CSS y OSS · 2 mayor que el OSS · 3 colpa (> 0,8·boca)."""
-    if size_mm > COLPA_FRACCION_BOCA * gape_mm:
-        return 3
-    return 0 if size_mm <= css_eff_mm else 1 if size_mm <= oss_mm else 2
-
-
-def tamanos_rocas(c: Calculo, n: int = ROCAS) -> list[float]:
-    """Tamaños (mm) de n rocas: los cuantiles de masa (i+½)/n de lo que llega al chancador."""
-    g, m = c.carga.grid, c.carga.solids
-    return [size_at_passing(g, m, (i + 0.5) / n) / MM for i in range(n)]
-
-
-def conteo_clases(c: Calculo) -> list[int]:
-    j = c.jaw
-    out = [0, 0, 0, 0]
-    for x in tamanos_rocas(c):
-        out[clase_de(x, j.css_eff_mm, j.oss_mm, j.gape_mm)] += 1
-    return out
-
-
-def _forma(k: int, cx: float, cy: float, r: float) -> str:
-    """Una roca: círculo (≤ CSS), cuadrado (CSS–OSS), triángulo (> OSS) o hexágono (colpa)."""
-    color, w = CLASS_COLORS[k], 3.0 if k == 3 else 0.6
-    attrs = f'fill="{color}" fill-opacity=".7" stroke="{INK}" stroke-width="{w}"'
-    if k == 0:
-        return f'<circle class="rock rock-0" cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" {attrs}/>'
-    if k == 1:
-        return (
-            f'<rect class="rock rock-1" x="{cx - 0.85 * r:.1f}" y="{cy - 0.85 * r:.1f}" '
-            f'width="{1.7 * r:.1f}" height="{1.7 * r:.1f}" {attrs}/>'
-        )
-    if k == 2:
-        pts = [(cx, cy - r), (cx - 0.87 * r, cy + 0.5 * r), (cx + 0.87 * r, cy + 0.5 * r)]
-    else:
-        pts = [(cx + r * math.cos(math.pi / 3 * i), cy + r * math.sin(math.pi / 3 * i))
-               for i in range(6)]  # fmt: skip
-    p = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-    return f'<polygon class="rock rock-{k}" points="{p}" {attrs}/>'
-
-
-def _rocas_svg(c: Calculo, g: Geometria, y_belt_hasta: float) -> str:
-    j = c.jaw
-    items = []
-    fall = 0
-    for x in tamanos_rocas(c):
-        k = clase_de(x, j.css_eff_mm, j.oss_mm, j.gape_mm)
-        r = max(x * g.s / 2.0, 1.6)
-        if x <= j.css_eff_mm:  # pasa: cae bajo la abertura, repartida con la razón áurea
-            fall += 1
-            gap = max(j.css_eff_mm * g.s - 2 * r, 0.0)
-            cx = g.xf + r + gap * ((fall * 0.618034) % 1.0)
-            cy = min(g.yb + 8.0 + 9.0 * (fall % 5) + r, y_belt_hasta)
-        else:
-            cy = g.yb - j.height * (x - j.css_eff_mm) / (j.gape_mm - j.css_eff_mm) * g.s
-            cx = g.xf + x * g.s / 2.0  # entre las dos mandíbulas: su tamaño = la abertura local
-        items.append((x, k, cx, cy, r))
-    items.sort(key=lambda it: -it[0])  # las grandes atrás
-    return "".join(_forma(k, cx, cy, r) for _, k, cx, cy, r in items)
 
 
 # ------------------------------------------------------------------ piezas
@@ -217,8 +165,7 @@ def _punto_girado(
 def _vista(g: Geometria, view: str) -> tuple[float, float, float, float]:
     if view == VIEW_FULL:
         return 0.0, 0.0, float(W), float(H)
-    w = 340.0
-    return g.xc - 120.0, g.yb - 150.0, w, w * H / W
+    return g.xc - 150.0, g.yb - 160.0, 490.0, 340.0  # el detalle incluye una franja de leyenda
 
 
 def jaw_svg(c: Calculo, amp: float, speed_pct: float, view: str = VIEW_FULL,
@@ -285,10 +232,20 @@ def jaw_svg(c: Calculo, amp: float, speed_pct: float, view: str = VIEW_FULL,
         f'<circle cx="{px:.1f}" cy="{py:.1f}" r="6" fill="{INK}"/>',
     ]
     body += _parrilla_y_flujos(c, g, paused)
-    body.append(_rocas_svg(c, g, Y_CORREA - 14.0))
+    body.append(dibujar(rocas_de_camara(c, g.xf, g.yb, g.s), "rock"))
+    body += _rocas_correa(c, g)
     body.append(_cotas(c, g))
-    body.append(_textos(c, g, amp, speed_pct, period))
+    body.append(_textos(c, g, amp, speed_pct, period, wall, qy_t, qy_r, view == VIEW_FULL))
     x, y, w, h = _vista(g, view)
+    if view == VIEW_DETAIL:  # una franja propia, tapa la parte baja, con la leyenda y la nota
+        sy = g.yb + 92.0
+        body.append(
+            f'<rect x="{x:.1f}" y="{sy:.1f}" width="{w:.1f}" height="{y + h - sy:.1f}" '
+            f'fill="{PAPER}"/>'
+        )
+        body.append(_leyenda(c, x + 14.0, sy + 16.0, cols=2, ancho=205.0, size=12))
+        solo = t("jaw.svg.solo", a=es(amp, 0), v=es(speed_pct, 0)) + " " + t("jaw.svg.solo2")
+        body.append(_text(x + 14.0, y + h - 10.0, solo, 11, "start", "lbl", SOLO))
     css = _css(paused)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" class="cm-svg" viewBox="{x:.1f} {y:.1f} {w:.1f} '
@@ -298,40 +255,86 @@ def jaw_svg(c: Calculo, amp: float, speed_pct: float, view: str = VIEW_FULL,
     )
 
 
+def _rocas_correa(c: Calculo, g: Geometria) -> list[str]:
+    """Sobre la correa: los finos de la parrilla (aguas arriba) y el producto del chancador."""
+    xg, mid = g.xf - 140.0, g.xf + (g.xc - g.xf) / 2.0
+    fin = []
+    if c.pasante is not None:
+        fin = rocas_de_correa(c, c.pasante, FINOS, xg - 45.0, xg + 45.0, Y_CORREA, g.s)
+    prod = rocas_de_correa(c, c.prod_chancador, PRODUCTO, mid - 110.0, mid + 110.0, Y_CORREA, g.s)
+    prod = sin_encimar(prod, fin)
+    return [dibujar(fin, "fin"), dibujar(prod, "prod")]
+
+
+def _parrilla(c: Calculo, g: Geometria, xg: float, top: float, paused: bool) -> list[str]:
+    """Tolva, parrilla (plataforma inclinada de barras sobre su bastidor), chute de finos."""
+    x0, y_a = g.xf - 230.0, g.y0 - 112.0
+    xs, y_s = g.xf - 80.0, g.y0 - 82.0  # fin de la zona con abertura
+    xb, y_b = g.xf + 6.0, g.y0 - 56.0  # borde que entrega a la boca
+    ap = c.parrilla.aperture_mm * g.s  # abertura a escala
+    pitch = 8.0 + ap
+
+    def riel(x: float) -> float:
+        return y_a + (y_s - y_a) * (x - x0) / (xs - x0)
+
+    n = max(int((xs - x0) / pitch), 2)
+    barras = "".join(
+        f'<rect x="{x0 + i * pitch:.1f}" y="{riel(x0 + i * pitch) - 13:.1f}" width="8" '
+        f'height="13" fill="{INK}"/>'
+        for i in range(n)
+    )
+    deck = (
+        f'<g id="jw-parrilla" class="{"" if paused else "jw-vib"}">{barras}'
+        f'<line x1="{x0}" y1="{y_a}" x2="{xs}" y2="{y_s}" stroke="{INK}" stroke-width="5"/>'
+        f'<line x1="{x0}" y1="{y_a + 10}" x2="{xs}" y2="{y_s + 10}" stroke="{STEEL}" '
+        f'stroke-width="4"/>'
+        f'<line x1="{xs}" y1="{y_s}" x2="{xb}" y2="{y_b}" stroke="{INK}" stroke-width="5"/>'
+        f"</g>"
+    )
+    fall = "".join(
+        f'<line x1="{x:.1f}" y1="{riel(x) + 12:.1f}" x2="{x:.1f}" y2="{riel(x) + 34:.1f}" '
+        f'stroke="#1F7A6F" stroke-width="2" stroke-dasharray="3 4"/>'
+        for x in (x0 + 25.0, x0 + 80.0, x0 + 130.0)
+    )
+    yf = y_a + 96.0  # fondo del embudo
+    chute = (
+        f'<polyline points="{x0},{y_a + 38} {xg - 9},{yf} {xg - 9},{Y_CORREA - 6}" fill="none" '
+        f'stroke="{STEEL}" stroke-width="4"/>'
+        f'<polyline points="{xs},{y_s + 40} {xg + 9},{yf} {xg + 9},{Y_CORREA - 6}" fill="none" '
+        f'stroke="{STEEL}" stroke-width="4"/>'
+    )
+    tolva = (
+        f'<polygon points="{x0 - 46},{y_a - 78} {x0 + 46},{y_a - 78} {x0 + 18},{y_a - 24} '
+        f'{x0 - 18},{y_a - 24}" fill="#E4DED2" stroke="{STEEL}" stroke-width="3"/>'
+    )
+    out = [tolva, chute, deck, fall]
+    mina, carga = c.mina.total_solids, c.carga.total_solids
+    out.append(_stream([(x0, y_a - 86), (x0, y_a - 50)], "alimentacion_fresca", mina, top, paused))
+    out.append(_stream([(x0, y_a - 26), (x0 + 12, y_a - 4)], "alimentacion_fresca", mina, top,
+                       paused))  # fmt: skip
+    out.append(_stream([(xb - 6, y_b + 2), (g.xf + 14, g.y0 - 16), (g.xf + 14, g.y0 - 4)],
+                       "alimentacion_fresca", carga, top, paused))  # fmt: skip
+    if c.pasante is not None:
+        out.append(_stream([(xg, yf - 14), (xg, Y_CORREA - 8)], "producto",
+                           c.pasante.total_solids, top, paused))  # fmt: skip
+    return out
+
+
 def _parrilla_y_flujos(c: Calculo, g: Geometria, paused: bool) -> list[str]:
     top = max(c.mina.total_solids, 1e-9)
     xg = g.xf - 140.0
-    out = []
-    if c.parrilla is None:
-        out.append(_stream([(g.xf - 60, g.y0 - 100), (g.xf + 14, g.y0 - 30), (g.xf + 14, g.y0 - 6)],
-                           "alimentacion_fresca", c.mina.total_solids, top, paused))  # fmt: skip
-    else:
-        x0, y_a, x1, y_b = g.xf - 230.0, g.y0 - 76.0, g.xf + 4.0, g.y0 - 34.0
-        pitch = 9.0 + c.parrilla.aperture_mm * g.s  # barra de 9 px + abertura a escala
-        nbar = max(int((x1 - x0) / pitch), 2)
-        bars = "".join(
-            f'<rect x="{x0 + i * pitch:.1f}" y="{y_a + (y_b - y_a) * i / nbar - 7:.1f}" '
-            f'width="9" height="14" fill="{INK}"/>'
-            for i in range(nbar + 1)
-        )
-        out.append(f'<g class="{"" if paused else "jw-vib"}" id="jw-parrilla">{bars}</g>')
-        out.append(_stream([(x0 - 40, y_a - 48), (x0 + 10, y_a - 10)], "alimentacion_fresca",
-                           c.mina.total_solids, top, paused))  # fmt: skip
-        out.append(_stream([(g.xf - 6, g.y0 - 30), (g.xf + 14, g.y0 - 16), (g.xf + 14, g.y0 - 4)],
-                           "alimentacion_fresca", c.carga.total_solids, top, paused))  # fmt: skip
-        if c.pasante is not None:
-            out.append(_stream([(xg, y_a + 22), (xg, Y_CORREA - 8)], "producto",
-                               c.pasante.total_solids, top, paused))  # fmt: skip
     mid = g.xf + (g.xc - g.xf) / 2.0
+    if c.parrilla is None:
+        out = [_stream([(g.xf - 60, g.y0 - 110), (g.xf + 14, g.y0 - 30), (g.xf + 14, g.y0 - 6)],
+                       "alimentacion_fresca", c.mina.total_solids, top, paused)]  # fmt: skip
+    else:
+        out = _parrilla(c, g, xg, top, paused)
     out.append(_stream([(mid, g.yb + 2), (mid, Y_CORREA - 8)], "producto",
                        c.prod_chancador.total_solids, top, paused))  # fmt: skip
-    belt_x0, belt_x1 = xg - 70.0, 620.0
     out.append(
-        f'<rect x="{belt_x0:.0f}" y="{Y_CORREA}" width="{belt_x1 - belt_x0:.0f}" height="16" '
+        f'<rect x="{xg - 70:.0f}" y="{Y_CORREA}" width="{620 - xg + 70:.0f}" height="16" '
         f'rx="8" fill="{STEEL}"/>'
     )
-    out.append(_stream([(belt_x0 + 20, Y_CORREA - 4), (belt_x1 - 20, Y_CORREA - 4)], "producto",
-                       c.producto.total_solids, top, paused))  # fmt: skip
     return out
 
 
@@ -343,23 +346,31 @@ def _text_rot(x: float, y: float, s: str, color: str = INK) -> str:
     )
 
 
+def _guia(x1: float, y1: float, x2: float, y2: float) -> str:
+    return (
+        f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{STEEL}" '
+        f'stroke-width="1" stroke-dasharray="3 3"/>'
+    )
+
+
 def _cotas(c: Calculo, g: Geometria) -> str:
     j = c.jaw
-    ox = g.xc  # abertura cerrada
     oss = g.xf + (j.css_eff_mm + j.stroke) * g.s
     r = 90.0
-    ang = math.atan2(
-        g.xc - g.xm, g.yb - g.y0
-    )  # inclinación de la cara móvil respecto a la vertical
+    ang = math.atan2(g.xc - g.xm, g.yb - g.y0)  # inclinación de la cara móvil
     apex_y = g.yb + j.css_eff_mm * j.height / (j.gape_mm - j.css_eff_mm) * g.s
     ax, ay = g.xf, apex_y
     p1, p2 = (ax, ay - r), (ax - r * math.sin(ang), ay - r * math.cos(ang))
     arc = f"M {p1[0]:.1f} {p1[1]:.1f} A {r} {r} 0 0 0 {p2[0]:.1f} {p2[1]:.1f}"
+    xl = g.xf + 64.0  # los rótulos de CSS y OSS van a un lado, con su línea guía
+    tx, ty = ax - (r + 12) * math.sin(ang / 2), ay - (r + 12) * math.cos(ang / 2)
     return (
         _dim(g.xf, g.y0 - 8, g.xm, g.y0 - 8, IDS[0])
         + _dim(g.xf - 96, g.y0, g.xf - 96, g.yb, IDS[1])
-        + _dim(g.xf, g.yb + 18, ox, g.yb + 18, IDS[2])
+        + _dim(g.xf, g.yb + 18, g.xc, g.yb + 18, IDS[2])
         + _dim(g.xf, g.yb + 34, oss, g.yb + 34, IDS[3])
+        + _guia(g.xc + 3, g.yb + 18, xl - 3, g.yb + 18)
+        + _guia(oss + 3, g.yb + 34, xl - 3, g.yb + 34)
         + f'<path d="{arc}" fill="none" stroke="{INK}" stroke-width="1.4"/>'
         + _text(
             g.xf + (g.xm - g.xf) / 2,
@@ -370,48 +381,73 @@ def _cotas(c: Calculo, g: Geometria) -> str:
             "lbl",
         )  # fmt: skip
         + _text_rot(g.xf - 102, (g.y0 + g.yb) / 2, t("jaw.svg.d", v=es(j.height, 0)))
-        + _text(g.xf + 8, g.yb + 14, t("jaw.svg.css", v=es(j.css_eff_mm, 1)), 12, "start", "lbl")
-        + _text(oss + 8, g.yb + 38, t("jaw.svg.oss", v=es(j.oss_mm, 1)), 12, "start", "lbl")
-        + _text(
-            ax + 8, ay - r - 6, t("jaw.svg.theta", v=es(j.bite_angle_deg, 1)), 12, "start", "lbl"
-        )  # fmt: skip
+        + _text(xl, g.yb + 22, t("jaw.svg.css", v=es(j.css_eff_mm, 1)), 12, "start", "lbl")
+        + _text(xl, g.yb + 38, t("jaw.svg.oss", v=es(j.oss_mm, 1)), 12, "start", "lbl")
+        + _text(tx, ty, "θ", 13, "middle", "lbl")
     )
 
 
-def _textos(c: Calculo, g: Geometria, amp: float, speed_pct: float, period: float) -> str:
+def _leyenda(c: Calculo, x: float, y: float, cols: int = 1, ancho: float = 0.0,
+             size: int = 13) -> str:  # fmt: skip
+    """La ÚNICA leyenda: forma, color y % de la masa de cada clase (del modelo) y del producto."""
+    frac = fracciones_clases(c)
+    pct = pasante_en(c.prod_chancador, c.jaw.oss_mm * 1000.0)
+    out = []
+    for i, k in enumerate(CLASS_KEYS):
+        cx, cy = x + (i % cols) * ancho, y + (i // cols) * (size + 8.0)
+        out.append(forma(i, cx + 6.0, cy - 4.0, 6.0, 0, "leg", 0.0))
+        color = "#8A5A00" if i == 1 else CLASS_COLORS[i]
+        out.append(_text(cx + 20.0, cy, t(f"jaw.svg.leg.{k}", p=es(100 * frac[i], 1)), size,
+                         "start", "", color))  # fmt: skip
+    fila = y + ((len(CLASS_KEYS) + cols - 1) // cols) * (size + 8.0)
+    out.append(_text(x, fila, t("jaw.svg.prod", p=es(100 * pct, 0)), size, "start", "", INK))
+    return "".join(out)
+
+
+def _textos(c: Calculo, g: Geometria, amp: float, speed_pct: float, period: float,
+            wall: float, qy_t: float, qy_r: float, info: bool) -> str:  # fmt: skip
     j = c.jaw
+    x0, y_a, xg = g.xf - 230.0, g.y0 - 112.0, g.xf - 140.0
+    lx = wall + 46.0  # los rótulos de la pared trasera van a la derecha, con su guía
+    ap_y = g.y0 + 110.0
+    abertura = j.css_eff_mm + (j.gape_mm - j.css_eff_mm) * (g.yb - ap_y) / (j.height * g.s)
+    x_in = g.xf + abertura * g.s / 2.0
     names = [
         (g.pivot[0] + 12, g.pivot[1] + FLY_R + 18, "jaw.svg.volante", "start"),
-        (g.xc + JAW_W + 8, g.yb - 22 - 0.0, "jaw.svg.toggle", "start"),
-        (g.xc + JAW_W + 8, g.yb - 14 - 0.26 * (g.yb - g.y0) - 12, "jaw.svg.barra", "start"),
-        (g.xf + (g.xm - g.xf) / 2, g.y0 + 20, "jaw.svg.camara", "middle"),
-        (g.xf - 236, g.y0 - 72, "jaw.svg.parrilla", "end"),
+        (lx, qy_t + 4, "jaw.svg.toggle", "start"),
+        (lx, qy_r + 4, "jaw.svg.barra", "start"),
+        (lx, ap_y + 4, "jaw.svg.camara", "start"),
+        (x0 + 60, y_a - 14, "jaw.svg.parrilla", "start"),
+        (xg - 16, y_a + 170, "jaw.svg.finos", "end"),
         (g.xf - 195, Y_CORREA + 32, "jaw.svg.correa", "start"),
     ]
     out = "".join(_text(x, y, t(k), 12, a, "lbl", STEEL) for x, y, k, a in names)
+    out += _guia(wall + 36, qy_t, lx - 4, qy_t) + _guia(wall + 36, qy_r, lx - 4, qy_r)
+    out += _guia(x_in, ap_y, lx - 4, ap_y)
     out += _text_rot(g.xf - 52, (g.y0 + g.yb) / 2, t("jaw.svg.fija"), INK)
-    n = conteo_clases(c)
-    legend = [
-        (t(f"jaw.svg.leg.{k}", n=n[i]), 13, "", CLASS_COLORS[i] if i != 1 else "#8A5A00")
-        for i, k in enumerate(CLASS_KEYS)
-    ]
-    marks = "".join(
-        _forma(i, 660.0, 252.0 + i * 18.85 - 4.0, 6.0).replace("rock", "leg") for i in range(4)
-    )
-    info = _lines(650, 40, [
-        (t("jaw.svg.title"), 19, "t", INK),
-        (t("jaw.svg.dims", g=es(j.gape_mm, 0), w=es(j.width_mm, 0)), 15, "", INK),
-        (t("jaw.svg.rpm", rpm=es(j.rpm, 0), p=es(60.0 / j.rpm, 3)), 15, "", INK),
-        (t("jaw.svg.view", p=es(period, 2), v=es(speed_pct, 0)), 15, "", INK),
-        (t("jaw.svg.stroke", l=es(j.stroke, 1), a=es(amp, 0)), 15, "", INK),
-    ])  # fmt: skip
-    info += _lines(672, 258, legend)
-    info += _lines(650, 350, [
-        (t("jaw.svg.note1"), 12, "", STEEL), (t("jaw.svg.note2"), 12, "", STEEL),
-        (t("jaw.svg.note3"), 12, "", STEEL),
-    ])  # fmt: skip
-    note = t("jaw.svg.solo", a=es(amp, 0), v=es(speed_pct, 0))
-    return out + marks + info + _text(g.xc - 118, g.yb + 62, note, 11, "start", "lbl", "#8A3B12")
+    bloque = ""
+    if info:  # el bloque de información y la leyenda solo van en el corte completo
+        bloque = _lines(650, 40, [
+            (t("jaw.svg.title"), 19, "t", INK),
+            (t("jaw.svg.dims", g=es(j.gape_mm, 0), w=es(j.width_mm, 0)), 15, "", INK),
+            (t("jaw.svg.rpm", rpm=es(j.rpm, 0), p=es(60.0 / j.rpm, 3)), 15, "", INK),
+            (t("jaw.svg.view", p=es(period, 2), v=es(speed_pct, 0)), 15, "", INK),
+            (t("jaw.svg.stroke", l=es(j.stroke, 1), a=es(amp, 0)), 15, "", INK),
+            (t("jaw.svg.theta", v=es(j.bite_angle_deg, 1)), 15, "", INK),
+            (t("jaw.svg.solo", a=es(amp, 0), v=es(speed_pct, 0)), 12, "", SOLO),
+            (t("jaw.svg.solo2"), 12, "", SOLO),
+        ])  # fmt: skip
+        n = len(rocas_de_camara(c, g.xf, g.yb, g.s))
+        fin = FINOS if c.pasante is not None else 0
+        bloque += _leyenda(c, 650.0, 262.0)
+        bloque += _lines(650, 535, [
+            (t("jaw.svg.note1", n=n, m=ROCAS), 12, "", STEEL),
+            (t("jaw.svg.note2"), 12, "", STEEL),
+            (t("jaw.svg.note3", a=PRODUCTO), 12, "", STEEL),
+            (t("jaw.svg.note4", b=fin), 12, "", STEEL),
+        ])  # fmt: skip
+    prod = t("jaw.svg.prodtot", t=es(c.producto.total_solids, 0), p=es(c.p80, 1))
+    return out + bloque + _text(350, Y_CORREA + 32, prod, 12, "start", "lbl", INK)
 
 
 # ------------------------------------------------------------------ abertura en el tiempo

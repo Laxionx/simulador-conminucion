@@ -92,18 +92,18 @@ T = {
     "jaw.err.rr": "With that n, the F80 is too close to the maximum size: lower F80 or raise n.",
     "jaw.err.modelo": "The model rejected these data: {msg}",
     # ------------------------------------------------------------ indicators and state
-    "jaw.m.cap": "Effective capacity (t/h)",
-    "jaw.m.cap.help": "The lower of the kinematic capacity and the motor limit.",
+    "jaw.m.cap": "Capacity (t/h)",
+    "jaw.m.cap.help": "Effective capacity: the lower of the kinematic capacity and the motor limit.",
     "jaw.m.util": "Utilization",
     "jaw.m.util.help": "Feed to the crusher divided by the effective capacity.",
-    "jaw.m.p80": "Total product P80 (mm)",
-    "jaw.m.p80.help": "Crusher product plus what passed through the grizzly.",
-    "jaw.m.pot": "Bond power (+ idle) / installed (kW)",
-    "jaw.m.pot.help": "Bond energy times the crusher feed, plus the idle fraction.",
+    "jaw.m.p80": "Product P80 (mm)",
+    "jaw.m.p80.help": "Total product P80: crusher product plus what passed through the grizzly.",
+    "jaw.m.pot": "Power (kW)",
+    "jaw.m.pot.help": "Bond power (+ idle) / installed, in kW: Bond energy times the crusher feed.",
     "jaw.m.nnc": "N / Nc",
     "jaw.m.nnc.help": "Rpm over critical speed; above 1 the capacity is reduced.",
-    "jaw.m.ang": "Nip angle / limit (°)",
-    "jaw.m.ang.help": "θ = arctan((G − effective CSS)/D) against 2·arctan μ.",
+    "jaw.m.ang": "Nip θ (°)",
+    "jaw.m.ang.help": "Nip angle / limit, in °: θ = arctan((G − effective CSS)/D) against 2·arctan μ.",
     "jaw.h.estado": "Operating state",
     "jaw.fuente": "Source: {fuente}.",
     "jaw.chk.rebalse": "The hopper fills in {min} min.",
@@ -154,10 +154,6 @@ T = {
     "jaw.amp.help": "Changes only the drawing: the real stroke is small next to the chamber.",
     "jaw.vel.label": "Animation speed (%)",
     "jaw.vel.help": "Changes only the drawing: at 100 % the swing would be real, too fast to see.",
-    "jaw.esquema.nota": (
-        "Each rock is worth 1/120 of the mass reaching the crusher and sits at the height where "
-        "its size equals the opening. Colors are also told apart by shape."
-    ),
     "jaw.ab.texto": (
         "The discharge opening swings between the effective CSS ({css} mm) and the OSS ({oss} "
         "mm), a stroke of {l} mm, in a cycle of {s} s."
@@ -175,19 +171,24 @@ T = {
     "jaw.svg.camara": "V-shaped chamber",
     "jaw.svg.parrilla": "vibrating grizzly",
     "jaw.svg.correa": "product belt",
-    "jaw.svg.leg.fino": "≤ CSS: {n} rocks",
-    "jaw.svg.leg.css_oss": "between CSS and OSS: {n}",
-    "jaw.svg.leg.grueso": "larger than the OSS: {n}",
-    "jaw.svg.leg.colpa": "oversize (> 0.8·gape): {n}",
+    "jaw.svg.leg.fino": "≤ CSS: {p} % of the mass",
+    "jaw.svg.leg.css_oss": "between CSS and OSS: {p} %",
+    "jaw.svg.leg.grueso": "larger than the OSS: {p} %",
+    "jaw.svg.leg.colpa": "oversize (> 0.8·gape): {p} %",
+    "jaw.svg.prod": "Product: {p} % below the OSS",
+    "jaw.svg.finos": "grizzly fines → belt",
+    "jaw.svg.prodtot": "total product: {t} t/h · P80 {p} mm",
+    "jaw.svg.solo2": "only the drawing changes",
     "jaw.svg.title": "Jaw crusher",
     "jaw.svg.dims": "Gape × width: {g} × {w} mm",
     "jaw.svg.rpm": "{rpm} rpm = one cycle every {p} s",
     "jaw.svg.view": "In the drawing: {p} s per cycle ({v} %)",
     "jaw.svg.stroke": "Real stroke {l} mm, drawn ×{a}",
-    "jaw.svg.note1": "Rocks: 120 mass quantiles of what reaches",
-    "jaw.svg.note2": "the chamber, at the height where their size",
-    "jaw.svg.note3": "equals the opening. Dimensions to scale.",
-    "jaw.svg.solo": "Stroke ×{a} and speed {v} %: only the drawing changes",
+    "jaw.svg.note1": "Of {m} quantiles, the {n} that",
+    "jaw.svg.note2": "fit without overlapping are drawn.",
+    "jaw.svg.note3": "Belt: {a} product quantiles",
+    "jaw.svg.note4": "and {b} of the grizzly fines.",
+    "jaw.svg.solo": "Stroke ×{a}, speed {v} %:",
     "jaw.svg.ab.title": "Discharge opening over time",
     "jaw.svg.ab.x": "two cycles = {s} s at {n} rpm (real speed)",
     "jaw.svg.ab.label": "Discharge opening between the CSS and the OSS over two cycles",
@@ -328,9 +329,7 @@ T = {
         "\\ \\mathrm{kWh/t},\\qquad "
         "Q_{\\mathrm{Taggart}}=0.093\\,W\\,\\mathrm{OSS}\\,\\frac{\\rho_b}{1.6}"
     ),
-    "jaw.guia.eq6": (
-        "c(d)=1-\\exp\\!\\left[-0.693\\left(\\frac{d}{d_{50}}\\right)^{5.9}\\right]"
-    ),
+    "jaw.guia.eq6": ("c(d)=1-\\exp\\!\\left[-0.693\\left(\\frac{d}{d_{50}}\\right)^{5.9}\\right]"),
     "jaw.guia.supuestos": (
         "**Assumptions and limits.** What is labeled ASSUMPTION has no source in the documents "
         "reviewed.\n\n"
