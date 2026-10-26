@@ -14,6 +14,7 @@ Aquí se pregunta si el simulador reproduce los números que publicaron plantas 
 | C2 | Vazante, Nexa (Brasil) | Curva de partición del ciclón: d50c, alpha y agua a gruesos | **Pasa** en las 2 campañas |
 | C3 | Madneuli (Georgia) | Balance del circuito y carga circulante | **Pasa** en 3 de 3 clasificadores |
 | C4 | Constancia, Hudbay (Perú) | Energía de Bond en 14 muestreos de molinos de bolas | **Pasa** en 14 de 14 |
+| M | Chancador de mandíbula (King, Tabla 3.1; Nordberg 1976) | Capacidad en 56 puntos y producto contra la curva estándar | **Mixto**: pasan M2 (cinemática con un k) y el control empírico M4; **fallan** la referencia R, Taggart y los dos modelos de producto (resultado negativo) |
 
 Para comprobar que las pruebas pueden fallar, se metieron 3 errores a propósito y las 3 pruebas los detectaron:
 - Bond con +5 % de energía;
@@ -182,3 +183,29 @@ MODSIM rotula cada % pasante con la media geométrica de dos tamaños consecutiv
 | Tamizado contra los límites de clase de MODSIM | 220,7 µm |
 
 Antes de comparar un P80 de MODSIM con uno de planta, hay que deshacer ese corrimiento.
+
+## M · Chancador de mandíbula: capacidad y producto
+
+Código: `conminucion/mandibula*.py`; pruebas: `tests/test_mandibula_validacion.py`. Los listones se fijaron antes de ver los resultados y no se cambiaron; lo que no pasa queda como `xfail` estricto con los números medidos. Detalle del modelo en [chancado.md](chancado.md).
+
+**Datos.** Tabla 3.1 de King (2000, Technical Notes 5), 12 máquinas y 56 puntos (se excluye 30x42 a OSS 102 mm, impreso «118 / 2», una errata). Curva estándar de Nordberg (1976) con las constantes del modelo JAW1 de MODSIM 3.6; geometría y rangos de AMIT 135 (Univ. de Alaska Fairbanks).
+
+**Capacidad.** Listón: 80 % de los puntos dentro de ±30 %.
+
+| Modelo | Mediana \|error\| | Dentro de ±30 % | Veredicto |
+|---|---|---|---|
+| M1 referencia R (k = 1,485) | 19,3 % | 71,4 % | No pasa |
+| M2 cinemática + 1 factor k, fuera de muestra | 17,2 % | 83,9 % | Pasa |
+| M3 Taggart | 40,7 % | 35,7 % | No pasa |
+| M4 control empírico Q = a·W^b·OSS^c, fuera de muestra | 16,2 % | 83,9 % | Pasa |
+
+Hallazgo: la cinemática pasa solo con un k ajustado (1,78 a 1,86 t/m³ en los 12 pliegues, contra 1,485 de R), y el control empírico hace lo mismo con 3 parámetros. La física no gana a un ajuste de curva en esta tabla. N/Nc está entre 0,55 y 1,03 en todos los tamaños (24x36 llega a 1,03); el motor alcanza para la capacidad de la tabla en los 56 puntos con Wi = 12,5 kWh/t y F80 = 0,6·G (SUPUESTO), con una razón de potencia de 0,40 a 0,70.
+
+**Producto.** Listón: |Δ| ≤ 5 puntos porcentuales en 7 valores de r = x/OSS y 9 alimentaciones.
+
+| Modelo | máx \|Δ\| | Veredicto |
+|---|---|---|
+| P1 referencia R sin ajuste | 17,2 a 20,8 pp | No pasa |
+| P2 «whiten» ajustado en una alimentación, evaluado en las otras 8 | 2,0 a 9,4 pp | No pasa (4 de 8 dentro) |
+
+Límites: la curva de Nordberg es una curva tipo de fabricante, no un muestreo de planta; la validación mide si el modelo la reproduce, no si predice una mandíbula real. Los parámetros μ, vacío, Wi y d50 de la parrilla son supuestos.

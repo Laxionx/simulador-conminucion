@@ -77,8 +77,52 @@ Para comprobar que las pruebas pueden fallar, se metieron 5 errores a propósito
 - convención literal por defecto;
 - olvidar la fracción que se queda en su propia clase (b_ii).
 
+## Chancador de mandíbula y parrilla
+
+Código: `conminucion/mandibula.py` (`JawCrusher`, `Grizzly`), `mandibula_producto.py` (curva de Nordberg y producto de la referencia R), `mandibula_diagnostico.py` y `datos_mandibula.py` (Tabla 3.1 de King, constantes y fuentes). Pruebas: `tests/test_mandibula.py` y `tests/test_mandibula_validacion.py`. `CrusherOp` acepta tanto el cono como la mandíbula.
+
+**Geometría** (G boca, W ancho, D altura de la cámara = 2G, L_T carrera, CSS_e = CSS + desgaste, OSS = CSS_e + L_T). La carrera por defecto sigue AMIT 135: L_T = 0,0502·G^0,85 (G y L_T en metros).
+
+**Cinemática** (misma estructura que la referencia R):
+
+- tan θ = (G − CSS_e)/D; muerde si θ ≤ 2·arctan μ.
+- h = L_T/tan θ; s = ½·g·(30/N)²; Nc = 30·√(g·tan θ/(2·L_T)).
+- V = W·h·(CSS_e + L_T/2); Q = 60·N·V·f_N·k, con f_N = 1 si N ≤ Nc y (Nc/N)² si no.
+- Con D = 2G y N ≤ Nc, Q coincide con la forma de baja frecuencia de Rose y English (1967): Q = 60·L_T·N·W·(2·CSS + L_T)·R/(R − 1)·k, R = G/CSS. La prueba lo verifica a 1e-9 en los 56 puntos de la tabla.
+- La cámara es un trapecio de volumen W·D·(G + CSS_e + L_T/2)/2; los golpes de una partícula son D/mín(h, s).
+
+**Producto**, a elegir: `"whiten"` (el ciclo del cono con el ajuste igual al OSS: d1 = α1·OSS, d2 = α2·OSS + d*; reutiliza `resolver_ciclo` y el cono queda idéntico) o `"nordberg"` (curva estándar de Nordberg, 1976, tal como la codifica el modelo JAW1 de MODSIM: con r = x/OSS, P = 1 − exp(−(r/k)^n), n = 0,9756 y k = 0,81 si r ≤ 0,4073, y n = 1,435 y k = 0,65 si no; evaluada en la media geométrica de cada clase y sin permitir un producto más grueso que la alimentación). Solo se citan las constantes; no se copió código de MODSIM (GPL).
+
+**Parrilla**: partición de Karra c(d) = 1 − exp(−0,693·(d/d50)^5,9) a sobretamaño con d50 = abertura entre barras (SUPUESTO), o la variante "constante" de R (pasa η·f(x) si x < abertura, η = 0,85). Devuelve (pasante, retenido) con balance de masa a 1e-9.
+
+**Diagnóstico** (`diagnostico`, puro, sin textos): no muerde, N > Nc, rpm fuera de 100-359, carrera fuera de 1-7 cm, colpas (> 0,8·G), razón de reducción fuera de 4-9, sobrecarga con tiempo a rebalse y potencia de Bond + vacío mayor que la instalada. Cada chequeo lleva su fuente.
+
+**SUPUESTOS declarados** (sin fuente en los documentos revisados): μ = 0,3; fracción de potencia en vacío = 0; Wi de impacto = 12,5 kWh/t (valor del ejercicio 3-1 de King, de otro uso); α1, α2 y el exponente del `"whiten"` por defecto son los del cono (no calibrados para mandíbula); F80 = 0,6·G en la guarda de potencia; la abertura de la parrilla hace de d50.
+
+### Validación (ver también `VALIDACION_PLANTAS_REALES.md`, caso M)
+
+Capacidad contra la Tabla 3.1 de King (56 puntos; se excluye 30x42 a OSS 102 mm, impreso «118 / 2»), con CSS = OSS − L_T, D = 2G, N de la tabla y W = largo. Listón fijado antes: 80 % de los puntos dentro de ±30 % (fuera de muestra en M2 y M4, dejando fuera un tamaño entero cada vez).
+
+| Modelo | Mediana \|error\| | Dentro de ±30 % | Peor punto | ¿Pasa? |
+|---|---|---|---|---|
+| M1 referencia R (k = 2,7·0,55, sin parámetros) | 19,3 % | 40/56 = 71,4 % | 36x48 OSS 76: −47,5 % | **No** (xfail) |
+| M2 cinemática con un k ajustado (12 pliegues) | 17,2 % | 47/56 = 83,9 % | 48x60 OSS 254: +52,5 % | Sí |
+| M3 Taggart (ρ_b = 1,6) | 40,7 % | 20/56 = 35,7 % | 42x48 OSS 127: −58,3 % | **No** (xfail) |
+| M4 control empírico a·W^b·OSS^c (12 pliegues) | 16,2 % | 47/56 = 83,9 % | 56x72 OSS 254: +63,3 % | Sí |
+
+El k de M2 sale casi constante entre pliegues (1,78 a 1,86 t/m³; global 1,815 contra 1,485 de R): la cinemática tiene la forma correcta pero R la subestima un 18 %. Pero el control empírico de tres parámetros le gana en la mediana y empata en la fracción: la física aporta poco más que un ajuste de curva con esta tabla. Taggart falla porque subestima de 31 a 52 % todas las máquinas desde la 24x36.
+
+Producto contra la curva de Nordberg (42x48 a OSS 152 mm; r = x/OSS en 0,1 a 1,5; 9 alimentaciones Rosin-Rammler truncadas en 0,9·G; listón |Δ| ≤ 5 puntos porcentuales):
+
+| Modelo | máx \|Δ\| por alimentación | ¿Pasa? |
+|---|---|---|
+| P1 referencia R, sin ajuste | 17,2 a 20,8 pp | **No** (xfail) |
+| P2 «whiten» ajustado con n = 1,2 y F80/OSS = 5 (α1 = 0,350, α2 = 4,350, exponente 7,80) | 2,0 a 9,4 pp en las 8 alimentaciones fuera de muestra (4 pasan, 4 no) | **No** (xfail) |
+
+El ajuste de P2 deja un RMS de 1,5 pp en su alimentación, pero α2 − α1 llegó al límite superior de la búsqueda (4,0) y el exponente es muy alto: la curva de clasificación del ciclo es casi un escalón ancho, y no generaliza a las alimentaciones más finas (n = 0,8). Es un resultado negativo.
+
 ## Límites
 
 - Es una comparación contra la implementación de MODSIM, no contra una chancadora medida. Los parámetros (α1, α2, K) se deben calibrar con muestreos de cada planta. King dice que, una vez calibrados para un mineral y una chancadora, no dependen del CSS.
 - No predice la capacidad (t/h) ni la potencia instalada de la chancadora. La potencia que se informa es la de Bond.
-- No incluye la chancadora primaria (giratoria o de mandíbula). MODSIM la modela con curvas tipo de fabricante normalizadas por el d80.
+- La mandíbula tiene su propia sección arriba. La giratoria primaria no está incluida; MODSIM la modela con curvas tipo de fabricante normalizadas por el d80.

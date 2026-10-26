@@ -81,6 +81,7 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Ball-mill power from its dimensions, charge and speed (Bond-Rowland), validated against published worked examples.
 - Ball wear: steady-state charge with the general law d^Δ, recharge balance and ball life, and Bond's (1964) consumption correlations. Validated with charges measured in a plant (Davis 1919); see [docs/desgaste.md](docs/desgaste.md) (in Spanish).
 - Standard and short-head cone crusher (internal classification and Whiten's breakage): it reproduces the MODSIM reports with a deviation of 0.009 points or less; see [docs/chancado.md](docs/chancado.md) (in Spanish).
+- Jaw crusher (kinematic capacity, nip angle, critical speed, power, Whiten or Nordberg product) and grizzly, with diagnostics; validated against King's Table 3.1, with the negative results documented in [docs/chancado.md](docs/chancado.md) (in Spanish).
 - Plitt hydrocyclone (King's form, MODSIM's CYCL model): d50c, sharpness and water partition from the geometry, with the roping warning of Mular and Jull. It reproduces the MODSIM results; see [docs/plitt.md](docs/plitt.md) (in Spanish).
 - Classifier by d25/d75 sharpness index (logistic, Rosin-Rammler or exponential sum), with bypass and d50 scaling by density (equivalent to MODSIM's CYCA model).
 - Sequential-modular solver with tear streams and optional Wegstein.
@@ -149,7 +150,8 @@ ore).
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
-               desgaste, chancadora, plitt, modsim, ensayo_bond
+               desgaste, chancadora, mandibula (+ _producto, _diagnostico, _validacion),
+               datos_mandibula, plitt, modsim, ensayo_bond
 app/           streamlit_app.py (+ textos_es*.py and textos_en*.py: the texts of each language)
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
                desgaste.md, chancado.md, plitt.md, img/

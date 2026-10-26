@@ -96,6 +96,9 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Chancadora de cono estándar y de cabeza corta (clasificación interna y fractura de Whiten):
   reproduce los reportes de MODSIM con un desvío de 0,009 puntos o menos; ver
   [docs/chancado.md](docs/chancado.md).
+- Chancador de mandíbula (capacidad cinemática, mordida, velocidad crítica, potencia, producto de
+  Whiten o de Nordberg) y parrilla, con diagnóstico; validado contra la Tabla 3.1 de King, con
+  resultados negativos documentados en [docs/chancado.md](docs/chancado.md).
 - Hidrociclón de Plitt (forma de King, modelo CYCL de MODSIM): d50c, nitidez y partición de
   agua desde la geometría, con aviso de embanque de Mular y Jull. Reproduce los resultados de
   MODSIM; ver [docs/plitt.md](docs/plitt.md).
@@ -186,7 +189,8 @@ exacto, y μ, Λ y la fractura en los valores por defecto del simulador (no medi
 ```
 conminucion/   sizes, stream, fracture, mill, classifier, bond, units, flowsheet,
                circuits, reconcile, fitting, synthetic, validacion, plantas_reales, power,
-               desgaste, chancadora, plitt, modsim, ensayo_bond
+               desgaste, chancadora, mandibula (+ _producto, _diagnostico, _validacion),
+               datos_mandibula, plitt, modsim, ensayo_bond
 app/           streamlit_app.py (+ textos_es*.py y textos_en*.py: los textos de cada idioma)
 docs/          teoria.md, caso-validacion-modsim.md, VALIDACION_PLANTAS_REALES.md,
                desgaste.md, chancado.md, plitt.md, img/
