@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from .chancadora import ConeCrusher
 from .classifier import EfficiencyCurve, SharpnessCurve
+from .mandibula import JawCrusher
 from .mill import BallMill, EnergyBallMill
 from .plitt import PlittCyclone
 from .stream import Stream
@@ -23,9 +24,9 @@ class MillOp:
 
 @dataclass(frozen=True)
 class CrusherOp:
-    """Chancadora: mezcla las entradas y las chanca."""
+    """Chancadora (cono o mandíbula): mezcla las entradas y las chanca."""
 
-    crusher: ConeCrusher
+    crusher: ConeCrusher | JawCrusher
 
     def __call__(self, ins: list[Stream]) -> tuple[Stream, ...]:
         return (self.crusher(Stream.mix(ins)),)

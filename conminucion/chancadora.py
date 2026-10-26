@@ -31,6 +31,18 @@ CONVENCIONES = ("modsim", "literal")
 MM = 1000.0  # µm por mm
 
 
+def resolver_ciclo(solids, b, c) -> NDArray[np.float64]:
+    """Producto (t/h) del ciclo clasificación-fractura, de la clase más gruesa a la más fina.
+
+    `b` es la matriz de fractura (b[i, j] = fracción de la madre j que cae en la clase i) y `c`
+    la fracción de cada clase que queda retenida y se rompe en cada ciclo."""
+    held = np.zeros(len(c))  # M m_i (en t/h de alimentación)
+    for i in range(len(c)):
+        inflow = solids[i] + b[i, :i] @ (c[:i] * held[:i])
+        held[i] = inflow / (1.0 - c[i] * b[i, i])
+    return (1.0 - c) * held
+
+
 @dataclass(frozen=True)
 class ConeCrusher:
     """Chancadora de cono. Por defecto, la estándar de MODSIM (CRSH)."""
@@ -100,9 +112,4 @@ class ConeCrusher:
 
     def __call__(self, feed: Stream) -> Stream:
         b, c = self.breakage(feed.grid)
-        n = feed.grid.n
-        held = np.zeros(n)  # M m_i (en t/h de alimentación)
-        for i in range(n):
-            inflow = feed.solids[i] + b[i, :i] @ (c[:i] * held[:i])
-            held[i] = inflow / (1.0 - c[i] * b[i, i])
-        return Stream(feed.grid, (1.0 - c) * held, feed.water, feed.rho_s)
+        return Stream(feed.grid, resolver_ciclo(feed.solids, b, c), feed.water, feed.rho_s)
