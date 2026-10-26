@@ -8,7 +8,8 @@ CSS_e = CSS + δ y OSS = CSS_e + L_T. Fórmulas de la referencia R (ver docs/cha
     h = L_T/tan θ;  s = ½·g·(30/N)²;  Nc = 30·√(g·tan θ/(2·L_T))
     V = W·h·(CSS_e + L_T/2);  Q = 60·N·V·f_N·k,  f_N = 1 si N <= Nc, si no (Nc/N)²
 
-k [t/m³] es la densidad aparente efectiva (ρ_s·φ en R); aquí es un parámetro calibrable.
+k [t/m³] es la densidad aparente efectiva (ρ_s·φ en R); aquí es un parámetro calibrable, con
+K_CAL (ajuste global contra la Tabla 3.1 de King) por defecto.
 SUPUESTOS declarados: μ, k, la fracción de potencia en vacío y el Wi de impacto no salen de
 una fuente; ver `datos_mandibula`.
 """
@@ -27,7 +28,7 @@ from .datos_mandibula import (
     CARRERA_COEF,
     CARRERA_EXP,
     G_GRAVEDAD,
-    K_REF,
+    K_CAL,
     KARRA_EXPONENTE,
     KARRA_LN2,
     MU_DEFECTO,
@@ -95,8 +96,8 @@ class JawCrusher:
     power_kw: float | None = None
     idle_fraction: float = VACIO_DEFECTO  # SUPUESTO: fracción de power_kw gastada en vacío
     wi: float = WI_MANDIBULA_DEFECTO  # SUPUESTO: Wi de impacto, kWh/t
-    k: float = K_REF  # t/m³, densidad aparente efectiva (calibrable)
-    product_model: str = "whiten"
+    k: float = K_CAL  # t/m³, densidad aparente efectiva (calibrada contra King; ver K_CAL)
+    product_model: str = "nordberg"
     fines: float = 0.2  # whiten: K, n1, n2 como el cono de MODSIM
     alpha1: float = 0.653  # whiten: d1 = α1·OSS (SUPUESTO: valor del cono)
     alpha2: float = 1.6  # whiten: d2 = α2·OSS + d*

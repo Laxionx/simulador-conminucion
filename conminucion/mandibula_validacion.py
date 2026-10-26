@@ -54,7 +54,9 @@ def puntos_king() -> list[PuntoKing]:
 def mandibula_de_punto(p: PuntoKing, k: float = K_REF) -> JawCrusher:
     """CSS = OSS - L_T (regla AMIT), D = 2G, N = rpm de la tabla, W = largo."""
     css = p.oss_mm - carrera_amit_mm(p.boca_mm)
-    return JawCrusher(p.boca_mm, p.largo_mm, css, p.rpm, power_kw=p.kw, k=k)
+    return JawCrusher(
+        p.boca_mm, p.largo_mm, css, p.rpm, power_kw=p.kw, k=k, product_model="whiten"
+    )
 
 
 def error_pct(pred, obs) -> np.ndarray:

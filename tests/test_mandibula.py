@@ -172,7 +172,7 @@ def test_nordberg_producto_corriente_vacia_y_oss_invalido():
 
 
 def test_whiten_conserva_masa_y_usa_el_oss():
-    j = jaw()
+    j = jaw(product_model="whiten")
     f = feed()
     prod = j(f)
     assert prod.total_solids == pytest.approx(f.total_solids, rel=1e-9)
@@ -363,3 +363,11 @@ def test_diagnostico_sobrecarga_y_potencia():
     assert chico["potencia"].nivel == "mal"
     sin_motor = _por_codigo(diagnostico(jaw(power_kw=None), f))
     assert "potencia" not in sin_motor
+
+
+def test_los_defaults_son_el_k_calibrado_y_el_producto_de_nordberg():
+    from conminucion.datos_mandibula import K_CAL
+
+    j = JawCrusher(gape_mm=800.0, width_mm=1100.0, css_mm=100.0, rpm=180.0)
+    assert (j.k, j.product_model) == (K_CAL, "nordberg") and K_CAL == 1.815
+    assert j(feed()).p80 == pytest.approx(nordberg_product(feed(), j.oss_mm).p80)

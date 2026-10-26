@@ -127,3 +127,11 @@ def test_p2_whiten_ajustado_fuera_de_muestra():
     fuera = {k: v for k, v in max_abs_por_alimentacion(deltas).items() if k != (1.2, 5.0)}
     assert len(fuera) == 8 and len(ALIMENTACIONES) == 9 and len(R_PRODUCTO) == 7
     assert max(fuera.values()) <= LISTON_PP
+
+
+def test_k_cal_es_el_ajuste_global_contra_king():
+    """K_CAL se recalcula con los 56 puntos de la Tabla 3.1 (media geométrica del cociente)."""
+    from conminucion.datos_mandibula import K_CAL
+    from conminucion.mandibula_validacion import modelo_m2_cv, puntos_king
+
+    assert modelo_m2_cv(puntos_king())[2] == pytest.approx(K_CAL, abs=0.001)

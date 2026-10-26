@@ -37,6 +37,10 @@ G_GRAVEDAD = 9.81
 RHO_S_REF = 2.7
 LLENADO_REF = 0.55  # φ
 K_REF = RHO_S_REF * LLENADO_REF  # t/m³ de densidad aparente efectiva
+# Densidad aparente efectiva calibrada: media geométrica de Q_King/Q_cinemática(k=1) sobre los 56
+# puntos de la Tabla 3.1 (ajuste global en log, `mandibula_validacion.modelo_m2_cv`). Fuera de
+# muestra (un tamaño fuera cada vez): mediana |error| 17,2 % y 83,9 % de los puntos a ±30 %.
+K_CAL = 1.815  # t/m³
 R_K1, R_K2, R_K3 = 1.05, 1.25, 2.3  # C(x): K1·CSS_e, K2·OSS, exponente
 R_ETA_PARRILLA = 0.85
 TAGGART_RHO_B = 1.6
