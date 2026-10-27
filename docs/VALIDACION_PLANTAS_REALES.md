@@ -209,3 +209,15 @@ Hallazgo: la cinemática pasa solo con un k ajustado (1,78 a 1,86 t/m³ en los 1
 | P2 «whiten» ajustado en una alimentación, evaluado en las otras 8 | 2,0 a 9,4 pp | No pasa (4 de 8 dentro) |
 
 Límites: la curva de Nordberg es una curva tipo de fabricante, no un muestreo de planta; la validación mide si el modelo la reproduce, no si predice una mandíbula real. Los parámetros μ, vacío, Wi y d50 de la parrilla son supuestos.
+
+## D · Diagnóstico del muestreo con un error plantado (resultado negativo)
+
+La pestaña «Ajuste a datos» muestra, con datos propios, el χ² de la reconciliación frente a su crítico al 95 % (n + 2 grados de libertad, con σ = máx(5 % del valor; 0,002)) y el ajuste estandarizado más grande, z = (medido − reconciliado)/σ. Se probó si ese z señala la corriente y la malla con un error: sobre Vazante (campaña 1) se sumaron +4 puntos de % pasante en una corriente y una malla (el acumulado sigue en orden sin más cambios). El criterio se escribió antes de mirar el resultado y no se ajustó (`tests/test_muestreo_error_plantado.py`): el mayor |z| debía caer en esa corriente, en una clase con esa malla por límite, con |z| > 3, y el χ² debía empeorar.
+
+| Error plantado | χ² (base 0,04; crítico 25,0) | Mayor ajuste (z) | ¿Señala la corriente? |
+|---|---|---|---|
+| underflow, 149 µm | 27,28 | alimentación, 149–210 µm (2,91) | No |
+| overflow, 74 µm | 13,21 | alimentación, 74–105 µm (2,11) | No |
+| alimentación, 298 µm | 18,90 | alimentación, 210–298 µm (2,54) | Sí, pero |z| < 3 |
+
+Veredicto: **no pasa**. El χ² empeora en los tres casos pero solo pasa su crítico en uno, y el mayor z cae siempre en la malla correcta y en la alimentación, con |z| < 3 en los tres: el balance reparte el error entre las tres corrientes. Por eso la app muestra el χ² y el z como medidas de cuánto se corrigió, no ofrece «qué mejorar» y no sugiere qué corriente re-muestrear.

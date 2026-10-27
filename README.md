@@ -117,6 +117,19 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
   animado a escala, los 12 equipos de la Tabla 3.1 de King, curvas de capacidad y granulometría,
   balance de masa y «Prueba esto» (experimentos con números calculados en vivo). La pestaña
   Simulación tiene el mismo panel y su propio «Prueba esto».
+- «Ajuste a datos» con un muestreo REAL de molienda: pegas o subes (CSV/XLSX) los % pasantes del
+  ciclón y obtienes las granulometrías reconciliadas, R, carga circulante, d50c, α y Rf con su IC
+  y un panel «Estado del muestreo» (χ² frente a su crítico al 95 %, mayor ajuste estandarizado y
+  cierre del balance). Reproduce a Vazante (campaña 1) con el mismo camino de la validación. Una
+  prueba con un error plantado mostró que el z más grande NO identifica la corriente
+  defectuosa; por eso la app no sugiere qué re-muestrear.
+- Carga de CSV/XLSX (hasta 1 MB y 500 filas; `;` con coma decimal o `,` con punto; sin evaluar
+  fórmulas) en «Ajuste a datos» y en «Ensayo de Bond», con plantilla descargable.
+- «Comparar con tu planta» en «Chancado primario»: con tu capacidad medida se calibra k (factor
+  de planta f) y con el P80 medido del producto se estima el desgaste.
+
+Lo que subes viaja a los servidores de Streamlit y no se guarda. Para datos de una empresa,
+corre la app en local (`streamlit run app/streamlit_app.py`, ver «Cómo correrlo»).
 
 ## Ensayo de Bond virtual
 

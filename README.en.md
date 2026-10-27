@@ -90,6 +90,11 @@ print(res.table(), res.circulating_load, res.bond_kwh_t)
 - Synthetic plant survey that checks the recovery of parameters within their CI.
 - Streamlit app with a guide (what it simulates, equations, what data it needs and how each one is measured in a plant), the flowsheet and the equipment animated with data from the calculation, the convergence of the recycle and the size distribution stage by stage, mill power (Bond-Rowland), passing curves, stream table and CSV.
 - "Primary crushing" tab of the app: grizzly + jaw crusher with indicators, an "Operating state" panel (each check with its level written out and its source), the animated diagram drawn to scale, the 12 machines of King's Table 3.1, capacity and size distribution curves, mass balance and "Try this" (experiments with numbers computed live). The Simulation tab has the same panel and its own "Try this".
+- "Fitting to data" with a REAL grinding survey: paste or upload (CSV/XLSX) the cyclone % passing and get reconciled size distributions, R, circulating load, d50c, α and Rf with their CI, plus a "Survey status" panel (χ² against its 95 % critical value, largest standardized adjustment and balance closure). It reproduces Vazante (campaign 1) through the validation's own path. A test with a planted error showed that the largest z does NOT identify the faulty stream, so the app does not suggest what to resample.
+- CSV/XLSX upload (up to 1 MB and 500 rows; `;` with decimal comma or `,` with decimal point; formulas are not evaluated) in "Fitting to data" and in "Bond test", with a downloadable template.
+- "Compare with your plant" in "Primary crushing": your measured capacity calibrates k (plant factor f) and the measured product P80 estimates the wear.
+
+What you upload travels to Streamlit's servers and is not stored. For company data, run the app locally (`streamlit run app/streamlit_app.py`, see "How to run it" above).
 
 ## Virtual Bond test
 
