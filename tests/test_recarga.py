@@ -74,6 +74,21 @@ def test_un_diccionario_armado_con_otro_modulo_se_rearma(paquete):
             recarga._LOADED.pop(name, None)
 
 
+def test_un_modulo_que_otra_corrida_quito_durante_la_purga_no_rompe(paquete, monkeypatch):
+    """Dos corridas a la vez (una subida de archivo que llega con otra en curso): `principal`
+    desaparece de `sys.modules` entre `local_modules()` y la lectura de su fecha."""
+    importlib.import_module("rc_uno")
+    real = recarga.local_modules
+
+    def con_fantasma(folders):
+        found = real(folders)
+        found["rc_fantasma"] = paquete / "rc_fantasma.py"  # en `local`, pero ya no en sys.modules
+        return found
+
+    monkeypatch.setattr(recarga, "local_modules", con_fantasma)
+    assert recarga.purge_stale([paquete]) == []
+
+
 def test_sin_cambios_ninguna_corrida_quita_nada(paquete):
     mods = [importlib.import_module(n) for n in ("rc_uno", "rc_dos", "rc_tres")]
     for _ in range(3):

@@ -73,7 +73,10 @@ def purge_stale(folders: Iterable[str | Path]) -> list[str]:
     local = local_modules(folders)
     changed = False
     for name, path in local.items():
-        loaded = _LOADED.setdefault(name, _loaded_at(sys.modules[name]))
+        module = sys.modules.get(name)
+        if module is None:  # otra corrida del script lo quitó mientras tanto (p. ej. `principal`)
+            continue
+        loaded = _LOADED.setdefault(name, _loaded_at(module))
         try:
             changed = changed or path.stat().st_mtime > loaded
         except OSError:
