@@ -93,6 +93,8 @@ def test_ningun_texto_esta_vacio_y_solo_los_cognados_son_iguales_en_los_dos_idio
         "jaw.m.nnc", "jaw.svg.css", "jaw.svg.oss", "jaw.svg.theta", "jaw.plot.css",
         "jaw.plot.oss", "jaw.plot.cap.nc", "jaw.plot.cap.taggart", "jaw.plot.cap.x.css",
         "jaw.eje.rpm", "jaw.eje.css", "jaw.bal.p80", "jaw.bal.p50", "jaw.guia.eq2",
+        # muestreo real: «underflow», «overflow» y «z» se escriben igual en los dos idiomas
+        "mu.col.uf", "mu.col.of", "mu.col.z",
     }  # fmt: skip
 
 
@@ -176,7 +178,7 @@ def test_parse_lang_solo_acepta_es_y_en():
 def test_lang_en_en_la_url_abre_en_ingles_y_el_selector_cambia_el_idioma():
     en = run("en")
     assert [t.label for t in en.tabs] == [
-        "Guide", "Simulation", "Fitting to data (synthetic survey)", "Bond test", "Primary crushing"
+        "Guide", "Simulation", "Fitting to data", "Bond test", "Primary crushing"
     ]  # fmt: skip
     assert en.sidebar.radio[0].value == "en"
     en.sidebar.radio[0].set_value("es").run()

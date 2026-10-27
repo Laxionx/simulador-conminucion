@@ -34,6 +34,7 @@ CARGA_SOBRE_TABLA = 0.9  # ... y la alimentación en 90 % de la capacidad de la 
 MODELOS = ("nordberg", "whiten")
 PERSONALIZADO = "personalizado"
 OSS_COINCIDE_MM = 0.5  # el OSS «coincide» con un punto de la tabla si difiere menos de esto
+F_PLANTA_MIN, F_PLANTA_MAX = 0.2, 5.0  # factor de planta plausible; fuera de esto se pide revisar
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,11 @@ def validar(v: dict[str, object]) -> str | None:
             return "jaw.err.rango"
     if v.get("model") not in MODELOS or not isinstance(v.get("grizzly"), bool):
         return "jaw.err.numero"
+    kf = v.get("kf", 1.0)  # factor de planta (calibración con datos medidos); 1 = k de King
+    if isinstance(kf, bool) or not isinstance(kf, int | float) or not math.isfinite(kf):
+        return "jaw.err.numero"
+    if not F_PLANTA_MIN <= kf <= F_PLANTA_MAX:
+        return "jaw.err.rango"
     if v["gape"] <= v["css"] + v["wear"] + v["stroke"]:  # type: ignore[operator]
         return "jaw.err.boca"
     if v["f80"] >= v["top"]:  # type: ignore[operator]
@@ -159,12 +165,14 @@ def alimentacion(v: dict[str, object]) -> Stream:
 
 def maquina(v: dict[str, object]) -> JawCrusher:
     """El chancador. k = K_CAL·ρs/2,7: la densidad aparente efectiva escala con la del sólido
-    (SUPUESTO; con ρs = 2,7 es exactamente K_CAL)."""
+    (SUPUESTO; con ρs = 2,7 es exactamente K_CAL). `kf` (opcional, 1 por defecto) es el factor de
+    planta f = Q medido / Q del modelo: k_planta = k·f (ver `planta_datos`)."""
     return JawCrusher(
         float(v["gape"]), float(v["width"]), float(v["css"]), float(v["rpm"]),  # type: ignore[arg-type]
         height_mm=float(v["height"]), stroke_mm=float(v["stroke"]), wear_mm=float(v["wear"]),  # type: ignore[arg-type]
         mu=float(v["mu"]), power_kw=float(v["power"]), wi=float(v["wi"]),  # type: ignore[arg-type]
-        k=K_CAL * float(v["rho"]) / RHO_S_REF, product_model=str(v["model"]),  # type: ignore[arg-type]
+        k=K_CAL * float(v["rho"]) / RHO_S_REF * float(v.get("kf", 1.0)),  # type: ignore[arg-type]
+        product_model=str(v["model"]),  # type: ignore[arg-type]
     )  # fmt: skip
 
 

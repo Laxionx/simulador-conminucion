@@ -9,6 +9,7 @@ import math
 from dataclasses import dataclass
 
 import pandas as pd
+from carga import Columna
 
 from conminucion.ensayo_bond import (
     MOLINO_DIAMETRO_M,
@@ -70,6 +71,8 @@ CAMPOS: tuple[Campo, ...] = (
     Campo("p80", "µm", 10, 4000, 119.6, 0.1),
 )
 BY_KEY = {c.key: c for c in CAMPOS}
+# La columna de la tabla de ciclos: la misma definición lee el CSV/XLSX y escribe la plantilla.
+COLUMNAS_CICLOS = (Columna("finos", "Finos totales (g)", "Total fines (g)"),)
 Valores = dict[str, float]
 
 

@@ -9,7 +9,7 @@ T = {
     "toggle.help": 'Turns off the diagram animations. They also turn off on their own if the system has "reduce motion" enabled.',
     "tab.guide": "Guide",
     "tab.sim": "Simulation",
-    "tab.fit": "Fitting to data (synthetic survey)",
+    "tab.fit": "Fitting to data",
     "method.wegstein": "Wegstein",
     "method.succ": "Successive substitution",
     "m.p80": "Product P80 (µm)",

@@ -45,6 +45,7 @@ from estado import panel, pruebas  # noqa: E402
 from guia import guide_tab  # noqa: E402
 from i18n import activate, current, sidebar_selector, t, tr_error  # noqa: E402
 from mandibula_tab import mandibula_tab  # noqa: E402
+from muestreo_tab import FUENTES, muestreo_real  # noqa: E402
 from sim_estado import (  # noqa: E402
     disponible_kwh_t,
     filas_estado,
@@ -180,6 +181,14 @@ def ci_table(fit, truth) -> pd.DataFrame:
 
 
 def fitting_tab(cfg: CircuitConfig) -> None:
+    fuente = st.radio(
+        t("mu.fuente.label"), FUENTES, horizontal=True, key="fit_fuente",
+        format_func={f: t("mu.fuente." + f) for f in FUENTES}.__getitem__,
+        help=t("mu.fuente.help"),
+    )  # fmt: skip
+    if fuente != "sintetico":
+        muestreo_real(cfg, fuente if fuente in FUENTES else "tus")
+        return
     st.markdown(t("fit.intro"))
     c1, c2, c3 = st.columns(3)
     # Decimal y no entero: un number_input entero de Streamlit 1.65 se cae si un cliente manipulado

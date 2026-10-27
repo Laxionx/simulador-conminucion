@@ -58,15 +58,16 @@ def _mostrar(f: Fila) -> None:
     st.markdown(linea(f), help=f.ayuda or None)
 
 
-def panel(filas: list[Fila]) -> str:
+def panel(filas: list[Fila], todo_ok: str | None = None) -> str:
     """Dibuja el panel. Los chequeos con aviso o problema van uno por línea; los que están en rango
-    se agrupan (y si todos lo están, una sola línea). Devuelve el peor nivel."""
+    se agrupan (y si todos lo están, una sola línea, con el texto `todo_ok` si se da). Devuelve el
+    peor nivel."""
     fuera = [f for f in filas if f.nivel != "ok"]
     dentro = [f for f in filas if f.nivel == "ok"]
     for f in fuera:
         _mostrar(f)
     if not fuera:
-        st.markdown(f":green-badge[{etiqueta('ok')}] {t('estado.todo_ok')}")
+        st.markdown(f":green-badge[{etiqueta('ok')}] {todo_ok or t('estado.todo_ok')}")
     if dentro:
         with st.expander(t("estado.ver1") if len(dentro) == 1 else t("estado.ver", n=len(dentro))):
             for f in dentro:

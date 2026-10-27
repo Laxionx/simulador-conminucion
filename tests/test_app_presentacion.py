@@ -209,7 +209,7 @@ def test_la_app_muestra_las_cinco_pestanas_y_la_energia():
     assert [t.label for t in at.tabs] == [
         "Guía",
         "Simulación",
-        "Ajuste a datos (muestreo sintético)",
+        "Ajuste a datos",
         "Ensayo de Bond",
         "Chancado primario",
     ]

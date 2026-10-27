@@ -44,6 +44,7 @@ from mandibula_svg import (
     abertura_svg,
     jaw_svg,
 )
+from planta_tab import comparar_con_planta, factor_aplicado, nota_calibracion
 
 KEY_EQUIPO, KEY_PARRILLA, KEY_MODELO = PREFIX + "equipo", PREFIX + "grizzly", PREFIX + "model"
 KEY_VISTA, KEY_AMP, KEY_VEL, KEY_EJE = (PREFIX + k for k in ("vista", "amp", "vel", "eje"))
@@ -233,6 +234,7 @@ def _curvas(c: Calculo, eje: str) -> None:
     st.plotly_chart(granulometria_fig(c), width="stretch")
     st.plotly_chart(capacidad_fig(c, eje), width="stretch")
     st.caption(t("jaw.curvas.nota"))
+    nota_calibracion(c, curvas=True)
 
 
 def balance_table(c: Calculo) -> pd.DataFrame:
@@ -360,6 +362,7 @@ def mandibula_tab(animate: bool) -> None:
     controls = st.container()
     with controls:
         values = _controles()
+    values["kf"] = factor_aplicado()  # factor de planta (1 = k de King); ver planta_datos
     problem = validar(values)
     calc, error = None, None
     if problem is None:
@@ -374,6 +377,7 @@ def mandibula_tab(animate: bool) -> None:
             st.error(error)
         else:
             _indicadores(calc)
+            nota_calibracion(calc)
             _estado(calc)
         view, amp, vel = _vista_controles()
         if calc is not None:
@@ -385,5 +389,6 @@ def mandibula_tab(animate: bool) -> None:
     if calc is not None:
         _curvas(calc, eje)
         _balance(calc)
+        comparar_con_planta(calc)
     _prueba_esto()
     _guia()

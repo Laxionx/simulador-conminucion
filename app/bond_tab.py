@@ -13,6 +13,7 @@ from bond_datos import (
     BOLAS_N,
     BY_KEY,
     CAMPOS,
+    COLUMNAS_CICLOS,
     CORTE_PCT,
     FINOS_MAX,
     HEBEI_GBP_FINAL,
@@ -31,6 +32,7 @@ from bond_datos import (
     velocidad_critica_frac,
 )
 from bond_grafico import bond_figure
+from carga import cargador
 from equipos import as_images, es, mill_svg
 from guia import markdown_table
 from i18n import int_num, num_g, t
@@ -38,6 +40,7 @@ from i18n import int_num, num_g, t
 from conminucion.ensayo_bond import MOLINO_DIAMETRO_M, MOLINO_RPM, ResultadoBond
 
 CYCLE_KEY = PREFIX + "ciclo"
+BASE_KEY, VER_KEY = PREFIX + "base", PREFIX + "ver"  # la tabla cargada y cuántas veces se cargó
 ROW_PX = 35  # alto de una fila de st.dataframe, para que la tabla se vea entera
 
 
@@ -113,8 +116,15 @@ def calculator() -> None:
         t("bond.edit.finos"), help=t("bond.edit.help"), min_value=0.0, max_value=FINOS_MAX,
         step=0.1, format="%.1f", required=True,
     )  # fmt: skip
-    edited = st.data_editor(tabla_inicial(), key=TABLE_KEY, num_rows="dynamic", hide_index=True,
-                            column_config={"finos": column}, width="stretch")  # fmt: skip
+    nueva = cargador("bond", COLUMNAS_CICLOS, tabla_inicial())
+    if nueva is not None:  # el archivo entra a la tabla editable (clave nueva = tabla nueva)
+        st.session_state[BASE_KEY] = nueva
+        st.session_state[VER_KEY] = st.session_state.get(VER_KEY, 0) + 1
+    ver = st.session_state.get(VER_KEY, 0)
+    edited = st.data_editor(st.session_state.get(BASE_KEY, tabla_inicial()),
+                            key=TABLE_KEY if ver == 0 else f"{TABLE_KEY}_{ver}",
+                            num_rows="dynamic", hide_index=True, column_config={"finos": column},
+                            width="stretch")  # fmt: skip
     st.button(t("bond.calc.example"), on_click=_reset)
     finos = [None if pd.isna(x) else float(x) for x in edited["finos"].tolist()]
     problem = validar(valores, finos)

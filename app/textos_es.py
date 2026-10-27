@@ -7,11 +7,12 @@ from textos_es_bond import T as BOND
 from textos_es_datos import T as DATOS
 from textos_es_guia import T as GUIA
 from textos_es_mandibula import T as MANDIBULA
+from textos_es_real import T as REAL
 from textos_es_svg import T as SVG
 from textos_es_ui import T as UI
 
 TEXTS: dict[str, str] = {}
-for _part in (UI, GUIA, DATOS, SVG, BOND, MANDIBULA):
+for _part in (UI, GUIA, DATOS, SVG, BOND, MANDIBULA, REAL):
     _repeated = TEXTS.keys() & _part.keys()
     if _repeated:
         raise ValueError(f"claves repetidas en textos_es: {sorted(_repeated)}")

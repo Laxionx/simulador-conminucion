@@ -15,7 +15,7 @@ T = {
     ),
     "tab.guide": "Guía",
     "tab.sim": "Simulación",
-    "tab.fit": "Ajuste a datos (muestreo sintético)",
+    "tab.fit": "Ajuste a datos",
     "method.wegstein": "Wegstein",
     "method.succ": "Sustitución sucesiva",
     # ------------------------------------------------------------ simulación
