@@ -173,14 +173,30 @@ def _grafico_particion(r: Resultado) -> None:
     plt.close(fig)
 
 
+# Dominio físico de cada parámetro: d50c y α positivos, Rf entre 0 y 1, r/d positivo.
+DOMINIO = {"d50c": (0.0, None), "alpha": (0.0, None), "Rf": (0.0, 1.0)}
+
+
+def limite_ic(x: float, dominio: tuple[float | None, float | None] = (0.0, None)) -> str:
+    """Un límite del IC lineal, o «no fiable» si cae fuera del dominio físico: el jacobiano con
+    pocos puntos puede dar, por ejemplo, un d50c negativo, y ese número no se muestra."""
+    bajo, alto = dominio
+    fuera = (bajo is not None and x < bajo) or (alto is not None and x > alto)
+    imposible = bajo == 0.0 and alto is None and x <= 0.0  # positivos estrictos
+    if not np.isfinite(x) or fuera or imposible:
+        return t("mu.p.nofiable")
+    return es(x, 4)
+
+
 def tabla_parametros(r: Resultado) -> pd.DataFrame:
     """d50c, α y Rf: el valor del método usado, y el ajuste libre con su IC95 %."""
     usado = (r.d50c, r.alpha, r.rf)
     filas = []
     for i, (nombre, (v, lo, hi)) in enumerate(r.libre.as_dict().items()):
-        filas.append({t("mu.p.param"): nombre, t("mu.p.valor"): round(usado[i], 4),
-                      t("mu.p.libre"): round(v, 4), t("mu.p.lo"): round(lo, 4),
-                      t("mu.p.hi"): round(hi, 4)})  # fmt: skip
+        dom = DOMINIO.get(nombre, (None, None))
+        filas.append({t("mu.p.param"): nombre, t("mu.p.valor"): es(usado[i], 4),
+                      t("mu.p.libre"): es(v, 4), t("mu.p.lo"): limite_ic(lo, dom),
+                      t("mu.p.hi"): limite_ic(hi, dom)})  # fmt: skip
     return pd.DataFrame(filas)
 
 
@@ -210,7 +226,8 @@ def _molino(r: Resultado, knots: tuple[float, ...]) -> None:
     f = r.molino
     st.dataframe(pd.DataFrame({
         t("mu.molino.param"): [_fmt(k) for k in knots], t("mu.molino.rd"): np.round(f.values, 4),
-        t("mu.molino.lo"): np.round(f.ci_low, 4), t("mu.molino.hi"): np.round(f.ci_high, 4),
+        t("mu.molino.lo"): [limite_ic(x) for x in f.ci_low],
+        t("mu.molino.hi"): [limite_ic(x) for x in f.ci_high],
     }), hide_index=True)  # fmt: skip
 
 

@@ -123,8 +123,9 @@ T = {
     "mu.m.r": "R (solids to underflow)",
     "mu.est.todo_ok": "Coherent survey: the χ² and the largest adjustment are within expectations.",
     "mu.params.nota": (
-        "The CIs come from a linear approximation (Jacobian): a negative limit on d50c or α "
-        "means the CI is not reliable with so few points."
+        "The CIs come from a linear approximation (Jacobian). When a limit falls outside what "
+        "is physically possible (d50c, α or r/d of 0 or less; Rf outside 0 to 1) it shows "
+        "\"not reliable\" instead of the number: with so few points that approximation fails."
     ),
     "mu.m.r.help": "Fraction of the feed solids that leaves through the underflow.",
     "mu.m.cl": "Circulating load",
@@ -185,6 +186,7 @@ T = {
     "mu.p.libre": "free fit",
     "mu.p.lo": "95% CI low (free)",
     "mu.p.hi": "95% CI high (free)",
+    "mu.p.nofiable": "not reliable",
     "mu.pub": (
         "Published: d50c = {d50c} µm (this app: {mio}, difference {dd} %) and α = {a} (this app: "
         "{amio}, difference {da} %)."

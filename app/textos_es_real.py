@@ -116,8 +116,9 @@ T = {
     ),
     "mu.est.todo_ok": "Muestreo coherente: el χ² y el mayor ajuste están dentro de lo esperado.",
     "mu.params.nota": (
-        "Los IC salen de una aproximación lineal (jacobiano): un límite negativo en d50c o α "
-        "indica que, con tan pocos puntos, el IC no es fiable."
+        "Los IC salen de una aproximación lineal (jacobiano). Cuando un límite cae fuera de lo "
+        "físicamente posible (d50c, α o r/d de 0 o menos; Rf fuera de 0 a 1) se muestra «no "
+        "fiable» en vez del número: con tan pocos puntos esa aproximación no sirve."
     ),
     "mu.nota.diagnostico": (
         "El χ² y el z dicen cuánto se tuvo que corregir, no qué corriente está mal: en la prueba "
@@ -184,6 +185,7 @@ T = {
     "mu.p.libre": "ajuste libre",
     "mu.p.lo": "IC95 inf (libre)",
     "mu.p.hi": "IC95 sup (libre)",
+    "mu.p.nofiable": "no fiable",
     "mu.pub": (
         "Publicado: d50c = {d50c} µm (esta app: {mio}, diferencia {dd} %) y α = {a} (esta app: "
         "{amio}, diferencia {da} %)."

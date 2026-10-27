@@ -63,3 +63,19 @@ def test_observacion_el_mayor_ajuste_cae_en_la_malla_plantada_pero_en_otra_corri
     assert m.corriente == "alim" and abs(m.z) < 3.0
     assert mala.chi2 > base.chi2
     assert (mala.chi2 > mala.chi2_critico) == (corriente == "uf")
+
+
+def test_un_ic_imposible_se_muestra_como_no_fiable():
+    """Con el error plantado en el underflow, el IC lineal del ajuste libre da un d50c y un α
+    negativos: la tabla no muestra esos números sino «no fiable» (guarda de número imposible)."""
+    from muestreo_tab import limite_ic, tabla_parametros
+
+    mala = analizar(_con_error("uf", 149.0), VAZANTE_C1.solidos_pct)
+    lo = {n: v[1] for n, v in mala.libre.as_dict().items()}
+    assert lo["d50c"] < 0 and lo["alpha"] < 0  # el caso que motivó la guarda
+    tabla = tabla_parametros(mala)
+    columna_lo = tabla.iloc[:, 3].tolist()
+    assert columna_lo[0] == columna_lo[1] == "no fiable"
+    assert not any(str(x).startswith("-") for x in tabla.iloc[:, 3:].to_numpy().ravel())
+    assert limite_ic(0.5, (0.0, 1.0)) != "no fiable" and limite_ic(1.2, (0.0, 1.0)) == "no fiable"
+    assert limite_ic(0.0) == "no fiable" and limite_ic(float("nan")) == "no fiable"
