@@ -68,7 +68,7 @@ def panel(filas: list[Fila]) -> str:
     if not fuera:
         st.markdown(f":green-badge[{etiqueta('ok')}] {t('estado.todo_ok')}")
     if dentro:
-        with st.expander(t("estado.ver", n=len(dentro))):
+        with st.expander(t("estado.ver1") if len(dentro) == 1 else t("estado.ver", n=len(dentro))):
             for f in dentro:
                 _mostrar(f)
     if any(f.nivel == "mal" for f in filas):

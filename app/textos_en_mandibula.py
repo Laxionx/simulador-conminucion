@@ -9,6 +9,7 @@ T = {
     "estado.nivel.mal": "Problem",
     "estado.todo_ok": "Operation within range.",
     "estado.ver": "Show the {n} checks in range",
+    "estado.ver1": "Show the check in range",
     "prueba.aplicar": "Apply this change to the controls",
     "prueba.restablecer": "Back to the example",
     # ------------------------------------------------------------ machines and controls
